@@ -1,0 +1,43 @@
+# PostgreSQL + (опционально) pgAdmin — LAB2
+# Запуск из папки zil: docker compose up -d
+#
+# Запишите для подключения из Spring Boot (application.properties):
+#   хост:     localhost
+#   порт:     5432
+#   БД:       car_rental
+#   пользователь: rental
+#   пароль:   rental_pass
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zil-postgres
+    environment:
+      POSTGRES_USER: rental
+      POSTGRES_PASSWORD: rental_pass
+      POSTGRES_DB: car_rental
+    ports:
+      - "5432:5432"
+    volumes:
+      - zil_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rental -d car_rental"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: zil-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.test
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  zil_pgdata:

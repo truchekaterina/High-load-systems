@@ -157,6 +157,26 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 
 ---
 
+## LAB2: PostgreSQL в Docker
+
+В папке **`zil`** есть **`docker-compose.yml`** (PostgreSQL + pgAdmin).
+
+**Запуск у себя на ПК** (сначала откройте **Docker Desktop** и дождитесь, пока иконка перестанет «крутиться»):
+
+```bat
+cd путь\к\zil
+docker compose up -d
+```
+
+Или двойной щелчок по **`docker-up.bat`** в папке `zil`.
+
+Проверка: `docker compose ps` — контейнеры `zil-postgres`, `zil-pgadmin` в статусе **running**.  
+pgAdmin: **http://localhost:5050** (логин `admin@local.test`, пароль `admin`). Подключение к серверу БД: хост **`postgres`**, порт **5432**, user **`rental`**, БД **`car_rental`**, пароль **`rental_pass`**.
+
+Если видите **«Docker Desktop is unable to start»** — в Docker Desktop: **Troubleshoot → Restart** или включите **WSL 2** / обновите Windows; без работающего демона команды `docker` не выполняются.
+
+---
+
 ## Git и публикация на GitHub
 
 Репозиторий инициализирован в каталоге **`first_laba`** (ветка `main`, первый коммит уже есть).
