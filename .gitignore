@@ -1,0 +1,15 @@
+# Cursor / локальные настройки агента (не обязательны для сдачи)
+.cursor/
+
+# Секреты БД и окружения — создавайте локально, не коммитьте
+**/application-local.properties
+.env
+.env.*
+
+# Общие артефакты (дублирует zil/.gitignore при работе из корня)
+**/build/
+**/.gradle/
+**/.idea/
+*.log
+hs_err_pid*.log
+replay_pid*.log
