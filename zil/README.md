@@ -154,3 +154,23 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 ## Ограничения учебного проекта
 
 Нет БД, безопасности и сложной валидации — только то, что нужно для лабораторной.
+
+---
+
+## Git и публикация на GitHub
+
+Репозиторий инициализирован в каталоге **`first_laba`** (ветка `main`, первый коммит уже есть).
+
+Чтобы **выложить на GitHub**:
+
+1. Зайдите на [github.com](https://github.com) → **New repository** → имя, без галочки «Add README» → **Create repository**.
+2. В терминале (в папке `first_laba`):
+
+```bat
+git remote add origin https://github.com/ВАШ_ЛОГИН/ИМЯ_РЕПО.git
+git push -u origin main
+```
+
+Если GitHub предложит только `master`, выполните: `git branch -M main` перед первым `push`.
+
+Авторизация: Personal Access Token (Settings → Developer settings) или GitHub CLI (`gh auth login`).
