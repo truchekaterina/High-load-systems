@@ -13,6 +13,6 @@ docker compose ps
 echo.
 docker exec zil-postgres pg_isready -U rental -d car_rental
 echo.
-echo pgAdmin: http://localhost:5050  (admin@local.test / admin)
+echo pgAdmin: http://localhost:5050  (admin@example.com / admin)
 echo DB: localhost:5432  user rental  database car_rental
 pause
