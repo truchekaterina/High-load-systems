@@ -159,6 +159,8 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 
 ## LAB2: PostgreSQL в Docker
 
+**Подробный пошаговый план всего LAB2 (JPA, репозитории, тесты, git):** файл **[LAB2_PLAN.md](LAB2_PLAN.md)** в папке `zil`.
+
 В папке **`zil`** есть **`docker-compose.yml`** (PostgreSQL + pgAdmin).
 
 **Запуск у себя на ПК** (сначала откройте **Docker Desktop** и дождитесь, пока иконка перестанет «крутиться»):
