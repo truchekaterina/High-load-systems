@@ -23,6 +23,10 @@ dependencies {
     // Основной стартер
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
+    // LAB2: Spring Data JPA + PostgreSQL
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'org.postgresql:postgresql'
+
     // БАЗОВЫЙ тестовый стартер (JUnit 5, AssertJ, Mockito)
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
@@ -31,6 +35,9 @@ dependencies {
 
     // JUnit 5 (Jupiter) теперь является единственным поддерживаемым стандартом
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Тесты без Docker Postgres — in-memory H2
+    testRuntimeOnly 'com.h2database:h2'
 }
 
 tasks.named('test') {
