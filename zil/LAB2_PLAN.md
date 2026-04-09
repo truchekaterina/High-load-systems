@@ -146,6 +146,8 @@ spring.jpa.properties.hibernate.format_sql=true
 
 Соберите проект: **`./gradlew compileJava`**. Исправьте импорты (`jakarta.persistence.*` в новых версиях Spring).
 
+**Переход от LAB1:** в **`Application.java`** временно задано **`excludeName`** для DataSource/JPA, чтобы приложение **стартовало без PostgreSQL**, пока код ещё на HashMap. Когда репозитории станут **`JpaRepository`** и в БД реально ходите — **удалите весь блок `excludeName`** и поднимите Docker/Postgres перед `bootRun`.
+
 ---
 
 ## Этап 5. Заменить репозитории на Spring Data JPA
