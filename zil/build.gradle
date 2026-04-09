@@ -42,4 +42,7 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // Один форк — меньше одновременных JVM при нехватке RAM на хосте (Windows)
+    maxParallelForks = 1
+    jvmArgs '-Xmx384m', '-XX:MaxMetaspaceSize=192m'
 }
