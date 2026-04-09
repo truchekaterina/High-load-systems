@@ -48,9 +48,9 @@ public class RentControllerTest {
 
     @BeforeEach
     public void init() {
-        rentRepository.clear();
-        carRepository.clear();
-        clientRepository.clear();
+        rentRepository.deleteAll();
+        carRepository.deleteAll();
+        clientRepository.deleteAll();
     }
 
     @Test

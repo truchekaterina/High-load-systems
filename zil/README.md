@@ -175,6 +175,8 @@ docker compose up -d
 Проверка: `docker compose ps` — контейнеры `zil-postgres`, `zil-pgadmin` в статусе **running**.  
 pgAdmin: **http://localhost:5050** (логин `admin@example.com`, пароль `admin`). Подключение к серверу БД: хост **`postgres`**, порт **5432**, user **`rental`**, БД **`car_rental`**, пароль **`rental_pass`**.
 
+Если **Spring Boot на вашем ПК** (IntelliJ, `gradlew bootRun`) подключается к PostgreSQL, используйте **`localhost:5433`** — это внешний порт из `docker-compose.yml`, чтобы не конфликтовать с локальным PostgreSQL на 5432 (см. `application.properties`).
+
 Если видите **«Docker Desktop is unable to start»** — в Docker Desktop: **Troubleshoot → Restart** или включите **WSL 2** / обновите Windows; без работающего демона команды `docker` не выполняются.
 
 ---

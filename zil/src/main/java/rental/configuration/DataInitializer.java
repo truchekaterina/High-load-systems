@@ -15,7 +15,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Заполняет репозитории тестовыми данными при запуске приложения.
+ * LAB2: при старте один раз наполняет таблицы демо-данными через JPA ({@code save}).
+ * Повторная вставка по тем же UUID не выполняется: если в БД уже есть строки, выходим.
  */
 @Component
 public class DataInitializer implements ApplicationRunner {
@@ -47,6 +48,9 @@ public class DataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        if (carRepository.count() > 0 || clientRepository.count() > 0 || rentRepository.count() > 0) {
+            return;
+        }
         initCars();
         initClients();
         initRents();

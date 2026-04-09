@@ -3,7 +3,7 @@
 #
 # Запишите для подключения из Spring Boot (application.properties):
 #   хост:     localhost
-#   порт:     5432
+#   порт:     5433  (на хосте; внутри сети compose — 5432)
 #   БД:       car_rental
 #   пользователь: rental
 #   пароль:   rental_pass
@@ -17,7 +17,8 @@ services:
       POSTGRES_PASSWORD: rental_pass
       POSTGRES_DB: car_rental
     ports:
-      - "5432:5432"
+      # 5433 на хосте: чтобы не пересекаться с локальным PostgreSQL на Windows (часто слушает :5432)
+      - "5433:5432"
     volumes:
       - zil_pgdata:/var/lib/postgresql/data
     healthcheck:

@@ -37,7 +37,7 @@ public class CarControllerTest {
 
     @BeforeEach
     public void init() {
-        carRepository.clear();
+        carRepository.deleteAll();
     }
 
     @Test

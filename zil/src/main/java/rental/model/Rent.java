@@ -1,24 +1,38 @@
 package rental.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import org.springframework.lang.NonNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+@Entity
+@Table(name = "rents")
 public class Rent {
 
-    @NonNull
+    @Id
+    @Column(nullable = false, updatable = false)
     private UUID id;
-    @NonNull
+
+    /** Ссылка на {@link Car} без JPA-связи — тот же JSON, что в LAB1. */
+    @Column(name = "car_id", nullable = false)
     private UUID carId;
-    @NonNull
+
+    @Column(name = "client_id", nullable = false)
     private UUID clientId;
-    @NonNull
+
+    @Column(nullable = false)
     private LocalDate startDate;
-    @NonNull
+
+    @Column(nullable = false)
     private LocalDate endDate;
-    @NonNull
+
+    @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal totalCost;
 
     public Rent(@NonNull UUID id, @NonNull UUID carId, @NonNull UUID clientId,
@@ -32,6 +46,13 @@ public class Rent {
     }
 
     public Rent() {
+    }
+
+    @PrePersist
+    void generateIdIfAbsent() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
     }
 
     @NonNull

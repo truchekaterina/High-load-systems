@@ -1,18 +1,29 @@
 package rental.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import org.springframework.lang.NonNull;
 
 import java.util.UUID;
 
+@Entity
+@Table(name = "clients")
 public class Client {
 
-    @NonNull
+    @Id
+    @Column(nullable = false, updatable = false)
     private UUID id;
-    @NonNull
+
+    @Column(nullable = false)
     private String fullName;
-    @NonNull
+
+    @Column(nullable = false)
     private String driverLicense;
-    @NonNull
+
+    @Column(nullable = false)
     private String phone;
 
     public Client(@NonNull UUID id, @NonNull String fullName, @NonNull String driverLicense, @NonNull String phone) {
@@ -23,6 +34,13 @@ public class Client {
     }
 
     public Client() {
+    }
+
+    @PrePersist
+    void generateIdIfAbsent() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
     }
 
     @NonNull

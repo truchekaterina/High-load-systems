@@ -1,5 +1,8 @@
 package rental.service;
 
+import org.springframework.util.ObjectUtils;
+import rental.exception.EntityException;
+import rental.exception.EntityMessages;
 import rental.model.Car;
 import rental.model.Rent;
 import rental.repository.CarRepository;
@@ -8,6 +11,8 @@ import rental.repository.RentRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+
+import static java.lang.String.format;
 
 public class RentService {
 
@@ -24,20 +29,36 @@ public class RentService {
     }
 
     public Rent getRentById(String id) {
-        return rentRepository.findById(UUID.fromString(id));
+        UUID uuid = UUID.fromString(id);
+        return rentRepository.findById(uuid)
+                .orElseThrow(() -> new EntityException(format(EntityMessages.RENT_NOT_FOUND_MSG, uuid)));
     }
 
     public Rent saveRent(Rent rent) {
+        if (!ObjectUtils.isEmpty(rent.getId()) && rentRepository.existsById(rent.getId())) {
+            throw new EntityException(format(EntityMessages.RENT_EXISTS_MSG, rent.getId()));
+        }
         return rentRepository.save(rent);
     }
 
     public void deleteRent(String id) {
-        rentRepository.delete(UUID.fromString(id));
+        UUID uuid = UUID.fromString(id);
+        if (!rentRepository.existsById(uuid)) {
+            throw new EntityException(format(EntityMessages.RENT_NOT_FOUND_MSG, uuid));
+        }
+        rentRepository.deleteById(uuid);
     }
 
     public Rent updateRent(String id, Rent rent) {
-        rent.setId(UUID.fromString(id));
-        return rentRepository.put(rent);
+        UUID uuid = UUID.fromString(id);
+        Rent existing = rentRepository.findById(uuid)
+                .orElseThrow(() -> new EntityException(format(EntityMessages.RENT_NOT_FOUND_MSG, uuid)));
+        existing.setCarId(rent.getCarId());
+        existing.setClientId(rent.getClientId());
+        existing.setStartDate(rent.getStartDate());
+        existing.setEndDate(rent.getEndDate());
+        existing.setTotalCost(rent.getTotalCost());
+        return rentRepository.save(existing);
     }
 
     public boolean isCarAvailable(String model, LocalDate date, String city) {
@@ -45,10 +66,7 @@ public class RentService {
         if (carsInCity.isEmpty()) {
             return false;
         }
-        return carsInCity.stream().anyMatch(car ->
-                rentRepository.findAll().stream()
-                        .filter(r -> r.getCarId().equals(car.getId()))
-                        .noneMatch(r -> !date.isBefore(r.getStartDate()) && !date.isAfter(r.getEndDate()))
-        );
+        return carsInCity.stream()
+                .anyMatch(car -> rentRepository.countOverlappingRentOnDate(car.getId(), date) == 0);
     }
 }

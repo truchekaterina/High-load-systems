@@ -50,7 +50,7 @@
 | Параметр | Значение |
 |----------|----------|
 | Хост | `localhost` |
-| Порт | `5432` |
+| Порт | `5433` на хосте (в `docker-compose.yml` проброс `5433:5432`; внутри контейнера и pgAdmin — `5432`) |
 | БД | `car_rental` |
 | Пользователь | `rental` |
 | Пароль | `rental_pass` |
@@ -108,7 +108,7 @@
 
 ```properties
 # --- PostgreSQL ---
-spring.datasource.url=jdbc:postgresql://localhost:5432/car_rental
+spring.datasource.url=jdbc:postgresql://localhost:5433/car_rental
 spring.datasource.username=rental
 spring.datasource.password=rental_pass
 
@@ -268,7 +268,7 @@ git push -u origin lab2-spring-data-jpa
 | Симптом | Что проверить |
 |---------|----------------|
 | `Failed to configure a DataSource` | Нет настроек `spring.datasource.*` или опечатка в URL/логине. |
-| `Connection refused` к localhost:5432 | PostgreSQL не запущен или другой порт. |
+| `Connection refused` к localhost:5433 | PostgreSQL в Docker не запущен или другой порт в `application.properties`. |
 | Таблицы не создаются | Нет `@Entity` / не тот пакет для сканирования / ошибка в `ddl-auto`. |
 | `could not execute statement` / constraint | Дубликаты id, нарушение FK — смотрите SQL в логе. |
 | Тесты падают | Тесты всё ещё бьют в Postgres без БД — настройте H2 для тестов. |

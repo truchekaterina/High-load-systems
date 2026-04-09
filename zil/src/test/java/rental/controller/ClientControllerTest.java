@@ -36,7 +36,7 @@ public class ClientControllerTest {
 
     @BeforeEach
     public void init() {
-        clientRepository.clear();
+        clientRepository.deleteAll();
     }
 
     @Test

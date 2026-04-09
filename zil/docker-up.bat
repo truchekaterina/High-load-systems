@@ -14,5 +14,5 @@ echo.
 docker exec zil-postgres pg_isready -U rental -d car_rental
 echo.
 echo pgAdmin: http://localhost:5050  (admin@example.com / admin)
-echo DB: localhost:5432  user rental  database car_rental
+echo DB: localhost:5433  user rental  database car_rental
 pause

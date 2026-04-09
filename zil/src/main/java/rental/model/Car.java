@@ -1,25 +1,39 @@
 package rental.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import org.springframework.lang.NonNull;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
+@Entity
+@Table(name = "cars")
 public class Car {
 
-    @NonNull
+    @Id
+    @Column(nullable = false, updatable = false)
     private UUID id;
-    @NonNull
+
+    @Column(nullable = false, unique = true)
     private String vin;
-    @NonNull
+
+    @Column(nullable = false)
     private String model;
-    @NonNull
+
+    @Column(nullable = false)
     private String color;
-    @NonNull
+
+    @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal rentalCostPerDay;
-    @NonNull
+
+    @Column(nullable = false)
     private String city;
-    @NonNull
+
+    @Column(nullable = false)
     private String salonName;
 
     public Car(@NonNull UUID id, @NonNull String vin, @NonNull String model, @NonNull String color,
@@ -34,6 +48,13 @@ public class Car {
     }
 
     public Car() {
+    }
+
+    @PrePersist
+    void generateIdIfAbsent() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
     }
 
     @NonNull
