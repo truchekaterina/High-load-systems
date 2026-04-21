@@ -1,6 +1,8 @@
 # LAB2: Spring Data JPA + PostgreSQL — пошаговый план для проекта `zil`
 
-Этот документ написан для **новичка** и привязан к **вашему** коду: пакет `rental`, классы `Car`, `Client`, `Rent`, репозитории на `HashMap`, сервисы, `DataInitializer`, контроллеры в `zil/src/main/java/rental/`.
+> **Текущий код (ветка LAB3):** схема и seed в **Flyway** (`db/migration`), стартовые данные **без** `DataInitializer`; Hibernate **`ddl-auto=validate`**. Полный стенд: **`docker compose up --build -d`**. Подробности — в разделе **[LAB3 — дополнение](#lab3-flyway--docker-compose)** в конце документа.
+
+Этот документ написан для **новичка** и описывает **пошаговый путь LAB2**: пакет `rental`, переход с in-memory репозиториев на **JPA**, контроллеры в `zil/src/main/java/rental/`. Отдельные шаги про `DataInitializer` и `ddl-auto=update` относятся к **историческому** сценарию LAB2; в финальном проекте их заменяют миграции Flyway (см. LAB3).
 
 Внешний репозиторий с курса (Bitbucket) можно **не клонировать** — делаете **по смыслу то же**: JPA + таблицы + Spring Data.
 
@@ -296,3 +298,41 @@ git push -u origin lab2-spring-data-jpa
 - Эталон по стилю кода (если откроете доступ): ветка `feature/spring-boot-data-jpa` в репозитории курса на Bitbucket.
 
 Удачи: идите **маленькими коммитами** (например: «добавлен JPA и Car entity», «переведены репозитории», «обновлён DataInitializer») — так проще откатить шаг, если что-то сломалось.
+
+---
+
+## LAB3: Flyway + Docker Compose {#lab3-flyway--docker-compose}
+
+**Цель ТЗ:** Dockerfile для приложения; в `src/main/resources/db/migration` — **DDL** (создание схемы) и **DML** (INSERT начальных данных); поднять **приложение и PostgreSQL** через **Docker Compose**; продемонстрировать стенд (логи, API).
+
+### Что сделано в проекте `zil`
+
+| Требование | Реализация |
+|------------|------------|
+| **DDL** | `V1__init_schema.sql` — таблицы под сущности `Car`, `Client`, `Rent` |
+| **DML** | `V2__seed_data.sql` — тестовые строки (те же UUID, что удобны для Postman) |
+| **Flyway** | `spring.flyway.enabled=true` в `application.properties`; зависимости `spring-boot-starter-flyway` и `flyway-database-postgresql` в `build.gradle` |
+| **Hibernate** | `spring.jpa.hibernate.ddl-auto=validate` — таблицы **не** создаёт Hibernate, только сверка с `@Entity` |
+| **Dockerfile** | Многостадийный: **`eclipse-temurin:25-jdk-alpine`** — сборка **`bootJar`** через **`java -classpath …/gradle-wrapper.jar … GradleWrapperMain`** (без `./gradlew`, чтобы не зависеть от CRLF); финальный образ **`eclipse-temurin:25-jre-alpine`**, `java -jar` fat-jar `module1-1.0-SNAPSHOT.jar` |
+| **Compose** | `docker-compose.yml`: сервис **`postgres`** (порт хоста **5433**), сервис **`app`** (сборка из Dockerfile, порт **8082**), **`depends_on`** с **healthcheck** Postgres |
+
+### Запуск и проверка (без доп. скриптов)
+
+Из папки **`zil`** при запущенном Docker Desktop:
+
+```bat
+docker compose up --build -d
+docker compose ps
+docker compose logs app --tail 40
+```
+
+Ожидание: **`zil-postgres`** — healthy, **`zil-app`** — running. API: `http://localhost:8082/cars` (и `/clients`, `/rents`).
+
+Только БД под **IntelliJ** / **`gradlew bootRun`**: `docker compose up -d postgres` (JDBC на хосте: `localhost:5433` — см. `application.properties`).
+
+### Замечания для защиты
+
+- **Почему Alpine:** на части установок Docker Desktop для Windows образ **`eclipse-temurin:25-jre`** (glibc) давал ошибку **`exec java: input/output error`**; **`-alpine`** на том же проекте обычно работает.
+- **Переменные окружения в Compose** переопределяют URL БД для контейнера **`app`** (`postgres:5432`), тогда как в файле по умолчанию для хоста указан **`localhost:5433`**.
+
+Подробнее для пользователя: **`zil/README.md`** (раздел LAB3 и таблица «чеклист ТЗ»).

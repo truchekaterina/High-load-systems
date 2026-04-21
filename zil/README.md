@@ -4,7 +4,9 @@
 
 **LAB1:** данные в памяти (HashMap), после перезапуска сбрасываются.  
 **LAB2** (ветка **`lab2-spring-data-jpa`**): **PostgreSQL**, **Spring Data JPA**; тесты на **H2** без Docker.  
-**LAB3:** схема и начальные данные — **Flyway** (`src/main/resources/db/migration`), контейнеризация — **`Dockerfile`** + **`docker compose`** (postgres + app).
+**LAB3:** схема и начальные данные — **Flyway** (`src/main/resources/db/migration`: **DDL** в `V1__…`, **DML** в `V2__…`); контейнеризация — многостадийный **`Dockerfile`** (сборка **`bootJar`** внутри образа, **Alpine Temurin**) + **`docker compose`** (сервисы **postgres** и **app**). Один запуск полного стенда из папки **`zil`**: `docker compose up --build -d`.
+
+Пошаговый план LAB2 (история/шпаргалка): **[LAB2_PLAN.md](LAB2_PLAN.md)** — в конце файла есть **дополнение по LAB3**.
 
 ---
 
@@ -75,12 +77,16 @@ zil/
 │   └── configuration/       ServicesConfig
 ├── src/main/resources/
 │   ├── application.properties
-│   └── db/migration/        Flyway: V1__init_schema.sql, V2__seed_data.sql
+│   └── db/migration/        Flyway: V1__init_schema.sql (DDL), V2__seed_data.sql (INSERT)
 ├── src/test/java/rental/controller/   интеграционные тесты (MockMvc)
+├── Dockerfile                         LAB3: builder (JDK Alpine) + runtime (JRE Alpine)
+├── docker-compose.yml                 LAB3: postgres + app
+├── .dockerignore
 ├── build.gradle
 ├── settings.gradle
-├── gradlew / gradlew.bat
-└── postman_collection.json            готовые запросы для Postman
+├── gradlew / gradlew.bat              стандартный Gradle Wrapper (локально; в Docker — wrapper JAR)
+├── LAB2_PLAN.md                       план LAB2 + дополнение LAB3
+└── postman_collection.json            необязательно: импорт в Postman
 ```
 
 Пакет один — **`rental`**, без лишней вложенности `com...`.
@@ -164,7 +170,16 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 
 ## LAB2 / LAB3: Docker
 
-**План LAB2 (JPA, репозитории, тесты):** **[LAB2_PLAN.md](LAB2_PLAN.md)**.
+**План LAB2 и кратко LAB3:** **[LAB2_PLAN.md](LAB2_PLAN.md)** (в конце — раздел про Flyway и Compose).
+
+**Чеклист ТЗ LAB3 (что проверяет преподаватель):**
+
+| Требование | Где в проекте |
+|------------|----------------|
+| Dockerfile | `zil/Dockerfile` |
+| Инициализация схемы (DDL) и начальные данные (DML) | `zil/src/main/resources/db/migration/` |
+| Приложение + БД в Docker Compose | `zil/docker-compose.yml` |
+| Демонстрация стенда | `docker compose ps`, логи `app`, `curl`/браузер на `http://localhost:8082/cars` и др. |
 
 ### Только PostgreSQL (приложение из IntelliJ или `gradlew bootRun`)
 

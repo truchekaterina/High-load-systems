@@ -55,3 +55,9 @@ Thumbs.db
 *.mov
 *.wmv
 
+# LAB3 / локальная среда: не коммитить локальные пароли и профили
+application-local.properties
+**/application-local.properties
+
+# Опционально: личный черновик плана (раскомментируйте, если не хотите вести файл в git)
+# LAB2_PLAN.md
