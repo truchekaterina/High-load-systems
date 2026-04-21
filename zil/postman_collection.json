@@ -1,6 +1,7 @@
 {
   "info": {
-    "name": "Car Rental API - LAB1",
+    "name": "Car Rental API (zil)",
+    "description": "Необязательная коллекция для ручной проверки REST (тот же API, что в LAB1–LAB3).\n\nКак пользоваться:\n1. Запустите приложение на порту 8082 (например `docker compose up --build -d` из папки zil или `gradlew bootRun` при поднятой БД).\n2. В Postman: **Import** → **Upload Files** → выберите этот файл `postman_collection.json`.\n3. В коллекции переменная **baseUrl** по умолчанию `http://localhost:8082`; при необходимости смените.\n4. Открывайте папки Car / Client / Rent и отправляйте запросы. UUID в переменных **carId**, **clientId**, **rentId** совпадают с тестовыми данными из Flyway `V2__seed_data.sql`.\n\nПриложение и Docker от этого файла не зависят — только удобство вместо ручного ввода URL в Postman.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

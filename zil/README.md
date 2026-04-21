@@ -6,7 +6,7 @@
 **LAB2** (ветка **`lab2-spring-data-jpa`**): **PostgreSQL**, **Spring Data JPA**; тесты на **H2** без Docker.  
 **LAB3:** схема и начальные данные — **Flyway** (`src/main/resources/db/migration`: **DDL** в `V1__…`, **DML** в `V2__…`); контейнеризация — многостадийный **`Dockerfile`** (сборка **`bootJar`** внутри образа, **Alpine Temurin**) + **`docker compose`** (сервисы **postgres** и **app**). Один запуск полного стенда из папки **`zil`**: `docker compose up --build -d`.
 
-Пошаговый план LAB2 (история/шпаргалка): **[LAB2_PLAN.md](LAB2_PLAN.md)** — в конце файла есть **дополнение по LAB3**.
+Пошаговый план LAB2 (история/шпаргалка): **[LAB2_PLAN.md](LAB2_PLAN.md)** — в конце файла есть **дополнение по LAB3**. Развёрнуто только про LAB3: **[LAB3_PLAN.md](LAB3_PLAN.md)**.
 
 ---
 
@@ -86,6 +86,7 @@ zil/
 ├── settings.gradle
 ├── gradlew / gradlew.bat              стандартный Gradle Wrapper (локально; в Docker — wrapper JAR)
 ├── LAB2_PLAN.md                       план LAB2 + дополнение LAB3
+├── LAB3_PLAN.md                       подробный план только LAB3
 └── postman_collection.json            необязательно: импорт в Postman
 ```
 
@@ -170,7 +171,7 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 
 ## LAB2 / LAB3: Docker
 
-**План LAB2 и кратко LAB3:** **[LAB2_PLAN.md](LAB2_PLAN.md)** (в конце — раздел про Flyway и Compose).
+**План LAB2 и кратко LAB3:** **[LAB2_PLAN.md](LAB2_PLAN.md)** (в конце — раздел про Flyway и Compose). **Только LAB3 подробно:** **[LAB3_PLAN.md](LAB3_PLAN.md)**.
 
 **Чеклист ТЗ LAB3 (что проверяет преподаватель):**
 
