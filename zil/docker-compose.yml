@@ -1,7 +1,6 @@
-# LAB3: PostgreSQL + Spring Boot.
-# 1) Собрать jar: prepare-docker.ps1 или prepare-docker.bat
-# 2) Запуск: docker compose up --build -d
-# Если app снова падает на java: только БД — docker compose up -d postgres, приложение — gradlew bootRun (localhost:5433).
+# LAB3: PostgreSQL + Spring Boot (образ app собирается в Dockerfile: Gradle bootJar внутри контейнера).
+# Из папки zil: docker compose up --build -d
+# Только БД под IDE / bootRun: docker compose up -d postgres (localhost:5433).
 #
 # IntelliJ / хост: jdbc:postgresql://localhost:5433/car_rental
 # Контейнер app:  jdbc:postgresql://postgres:5432/car_rental

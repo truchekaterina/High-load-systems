@@ -178,7 +178,7 @@ docker compose up -d postgres
 
 ### Полный стенд LAB3: PostgreSQL + приложение в контейнере
 
-В папке **`zil`**:
+В папке **`zil`** одной командой поднимается БД и собирается/запускается приложение (**`bootJar` выполняется внутри образа**, см. многостадийный **`Dockerfile`**):
 
 ```powershell
 docker compose down -v
