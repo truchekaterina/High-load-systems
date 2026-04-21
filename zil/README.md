@@ -174,7 +174,7 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 docker compose up -d postgres
 ```
 
-Или двойной щелчок по **`docker-up.bat`**. БД: **`localhost:5433`**, пользователь **`rental`**, БД **`car_rental`**, пароль **`rental_pass`**.
+БД: **`localhost:5433`**, пользователь **`rental`**, БД **`car_rental`**, пароль **`rental_pass`**.
 
 ### Полный стенд LAB3: PostgreSQL + приложение в контейнере
 
