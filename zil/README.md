@@ -1,5 +1,7 @@
 # Сервис аренды автомобилей (Spring Boot)
 
+**Полное руководство по LAB1–LAB3, запуску и сдаче:** **[LABS_GUIDE_RU.md](LABS_GUIDE_RU.md)**.
+
 Одно приложение **Spring Boot 4**: REST API для машин, клиентов и аренд.
 
 **LAB1:** данные в памяти (HashMap), после перезапуска сбрасываются.  
@@ -85,6 +87,7 @@ zil/
 ├── build.gradle
 ├── settings.gradle
 ├── gradlew / gradlew.bat              стандартный Gradle Wrapper (локально; в Docker — wrapper JAR)
+├── LABS_GUIDE_RU.md                   единое руководство LAB1–LAB3 и запуск
 ├── LAB2_PLAN.md                       план LAB2 + дополнение LAB3
 ├── LAB3_PLAN.md                       подробный план только LAB3
 └── postman_collection.json            необязательно: импорт в Postman
