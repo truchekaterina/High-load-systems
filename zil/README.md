@@ -213,6 +213,8 @@ docker compose ps
 
 ## Git и публикация на GitHub
 
+**Перед открытым репозиторием:** не коммитьте файлы с реальными секретами. Должны остаться **локально** (они в `.gitignore` в корне `first_laba` и в `zil/`): `.env`, `application-local.properties`, ключи `*.pem`, keystore, `credentials.json` и т.д. В проекте в открытом виде только **учебные** учётные данные БД (`rental` / `rental_pass`) для Docker и `bootRun`.
+
 Репозиторий инициализирован в каталоге **`first_laba`** (ветка `main`, первый коммит уже есть).
 
 Чтобы **выложить на GitHub**:

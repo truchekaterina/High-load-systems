@@ -1,10 +1,37 @@
 # Cursor / локальные настройки агента (не обязательны для сдачи)
 .cursor/
 
-# Секреты БД и окружения — создавайте локально, не коммитьте
+# --- Секреты и ключи (публичный репозиторий: не коммитить) ---
 **/application-local.properties
+application-local.properties
 .env
 .env.*
+!.env.example
+
+# Ключи и сертификаты
+*.pem
+*.key
+**/id_rsa
+**/id_rsa.pub
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.cer
+*.der
+
+# Облака / CI / учётные файлы
+credentials.json
+*-credentials.json
+.google-creds.json
+google-services.json
+.aws/credentials
+**/secrets.yml
+**/secrets.yaml
+
+# Прочие типичные утечки
+*history*
+*.local
 
 # Общие артефакты (дублирует zil/.gitignore при работе из корня)
 **/build/

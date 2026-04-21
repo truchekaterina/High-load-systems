@@ -55,9 +55,21 @@ Thumbs.db
 *.mov
 *.wmv
 
-# LAB3 / локальная среда: не коммитить локальные пароли и профили
+# Локальные секреты (см. также .gitignore в корне first_laba)
 application-local.properties
 **/application-local.properties
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+**/id_rsa
+**/id_rsa.pub
+*.p12
+*.jks
+*.keystore
+credentials.json
+google-services.json
 
 # Опционально: личный черновик плана (раскомментируйте, если не хотите вести файл в git)
 # LAB2_PLAN.md
