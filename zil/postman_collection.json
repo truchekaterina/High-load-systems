@@ -1,11 +1,11 @@
 {
   "info": {
     "name": "Car Rental API (zil)",
-    "description": "Необязательная коллекция для ручной проверки REST (тот же API, что в LAB1–LAB3).\n\nКак пользоваться:\n1. Запустите приложение на порту 8082 (например `docker compose up --build -d` из папки zil или `gradlew bootRun` при поднятой БД).\n2. В Postman: **Import** → **Upload Files** → выберите этот файл `postman_collection.json`.\n3. В коллекции переменная **baseUrl** по умолчанию `http://localhost:8082`; при необходимости смените.\n4. Открывайте папки Car / Client / Rent и отправляйте запросы. UUID в переменных **carId**, **clientId**, **rentId** совпадают с тестовыми данными из Flyway `V2__seed_data.sql`.\n\nПриложение и Docker от этого файла не зависят — только удобство вместо ручного ввода URL в Postman.",
+    "description": "Необязательная коллекция для ручной проверки REST (тот же API, что в LAB1–LAB3).\n\nКак пользоваться:\n1. Запустите приложение на порту 8083 (например `docker compose up --build -d` из папки zil или `gradlew bootRun` при поднятой БД).\n2. В Postman: **Import** → **Upload Files** → выберите этот файл `postman_collection.json`.\n3. В коллекции переменная **baseUrl** по умолчанию `http://localhost:8083`; при необходимости смените.\n4. Открывайте папки Car / Client / Rent и отправляйте запросы. UUID в переменных **carId**, **clientId**, **rentId** совпадают с тестовыми данными из Flyway `V2__seed_data.sql`.\n\nПриложение и Docker от этого файла не зависят — только удобство вместо ручного ввода URL в Postman.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8082" },
+    { "key": "baseUrl", "value": "http://localhost:8083" },
     { "key": "carId", "value": "550e8400-e29b-41d4-a716-446655440001" },
     { "key": "clientId", "value": "6ba7b810-9dad-11d1-80b4-00c04fd430c1" },
     { "key": "rentId", "value": "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }

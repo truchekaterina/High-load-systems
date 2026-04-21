@@ -17,5 +17,5 @@ WORKDIR /app
 
 COPY --from=builder /app/build/libs/module1-1.0-SNAPSHOT.jar app.jar
 
-EXPOSE 8082
+EXPOSE 8083
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

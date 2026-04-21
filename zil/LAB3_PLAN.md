@@ -9,7 +9,7 @@
 - `GET /rents`
 - `GET /rents/availability?model=...&date=YYYY-MM-DD&city=...`
 
-Порт приложения: `8082`.
+Порт приложения: `8083`.
 
 ---
 
@@ -130,7 +130,7 @@ cd C:\Users\1\Desktop\neurohelp\first_laba\zil
 ### Должно быть так (ключевые строки)
 
 ```properties
-server.port=8082
+server.port=8083
 
 spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/car_rental}
 spring.datasource.username=${SPRING_DATASOURCE_USERNAME:rental}
@@ -260,7 +260,7 @@ WORKDIR /app
 
 COPY --from=builder /app/build/libs/module1-1.0-SNAPSHOT.jar app.jar
 
-EXPOSE 8082
+EXPOSE 8083
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 ```
 
@@ -268,7 +268,7 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 
 - Stage `builder` собирает jar внутри контейнера.
 - Stage runtime запускает только готовый jar (образ легче).
-- `EXPOSE 8082` совпадает с `server.port=8082`.
+- `EXPOSE 8083` совпадает с `server.port=8083`.
 
 ---
 
@@ -332,7 +332,7 @@ services:
       SPRING_DATASOURCE_USERNAME: rental
       SPRING_DATASOURCE_PASSWORD: rental_pass
     ports:
-      - "8082:8082"
+      - "8083:8083"
 
 volumes:
   zil_pgdata:
@@ -371,18 +371,18 @@ docker compose logs app
 
 ### Вариант 1: браузер/Postman
 
-- [http://localhost:8082/cars](http://localhost:8082/cars)
-- [http://localhost:8082/clients](http://localhost:8082/clients)
-- [http://localhost:8082/rents](http://localhost:8082/rents)
-- [http://localhost:8082/rents/availability?model=Toyota%20Camry&date=2026-03-05&city=Moscow](http://localhost:8082/rents/availability?model=Toyota%20Camry&date=2026-03-05&city=Moscow)
+- [http://localhost:8083/cars](http://localhost:8083/cars)
+- [http://localhost:8083/clients](http://localhost:8083/clients)
+- [http://localhost:8083/rents](http://localhost:8083/rents)
+- [http://localhost:8083/rents/availability?model=Toyota%20Camry&date=2026-03-05&city=Moscow](http://localhost:8083/rents/availability?model=Toyota%20Camry&date=2026-03-05&city=Moscow)
 
 ### Вариант 2: PowerShell
 
 ```powershell
-Invoke-RestMethod http://localhost:8082/cars
-Invoke-RestMethod http://localhost:8082/clients
-Invoke-RestMethod http://localhost:8082/rents
-Invoke-RestMethod "http://localhost:8082/rents/availability?model=Toyota%20Camry&date=2026-03-05&city=Moscow"
+Invoke-RestMethod http://localhost:8083/cars
+Invoke-RestMethod http://localhost:8083/clients
+Invoke-RestMethod http://localhost:8083/rents
+Invoke-RestMethod "http://localhost:8083/rents/availability?model=Toyota%20Camry&date=2026-03-05&city=Moscow"
 ```
 
 ---
@@ -457,7 +457,7 @@ git push -u origin lab3-docker-compose
 | Flyway ругается на SQL | Опечатка в DDL/DML | Проверить имена таблиц/колонок: `cars`, `clients`, `rents`, `rental_cost_per_day`, `full_name`, `car_id` и т.д. |
 | `ddl-auto=validate` падает | Схема в БД не совпала с `@Entity` | Исправить `V1__init_schema.sql` или очистить volume и поднять заново. |
 | `duplicate key` / `unique` ошибка | Дублируется seed (Flyway + DataInitializer) | Отключить `DataInitializer`, оставить только Flyway. |
-| Порт `8082` занят | На хосте уже что-то слушает порт | Освободить порт или временно поменять маппинг в compose, например `8083:8082`. |
+| Порт `8083` занят | На хосте уже что-то слушает порт | Освободить порт, остановить второй экземпляр приложения или в compose сменить маппинг, например `8084:8083` (снаружи 8084, в контейнере 8083). |
 | Порт `5433` занят | Локальный Postgres уже занял порт | Сменить хост-порт в compose, например `5434:5432`, и поправить локальный URL при запуске с IDE. |
 | Старые данные мешают проверке | persisted volume хранит прежнее состояние | `docker compose down -v` и снова `docker compose up --build -d`. |
 
@@ -470,7 +470,7 @@ cd C:\Users\1\Desktop\neurohelp\first_laba\zil
 docker compose up --build -d
 docker compose ps
 docker compose logs app
-Invoke-RestMethod http://localhost:8082/cars
+Invoke-RestMethod http://localhost:8083/cars
 docker compose down
 ```
 

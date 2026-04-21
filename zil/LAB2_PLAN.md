@@ -246,7 +246,7 @@ gradlew.bat test
 1. Поднята БД (Docker или локальный Postgres).
 2. Запуск приложения: **`gradlew.bat bootRun`** или Run в IntelliJ.
 3. В логах — без ошибок подключения к БД, Hibernate может показать SQL.
-4. Браузер / Postman: **`GET http://localhost:8082/cars`** — JSON с данными.
+4. Браузер / Postman: **`GET http://localhost:8083/cars`** — JSON с данными.
 5. Проверка **`/rents/availability`** — как в LAB1.
 
 ---
@@ -314,7 +314,7 @@ git push -u origin lab2-spring-data-jpa
 | **Flyway** | `spring.flyway.enabled=true` в `application.properties`; зависимости `spring-boot-starter-flyway` и `flyway-database-postgresql` в `build.gradle` |
 | **Hibernate** | `spring.jpa.hibernate.ddl-auto=validate` — таблицы **не** создаёт Hibernate, только сверка с `@Entity` |
 | **Dockerfile** | Многостадийный: **`eclipse-temurin:25-jdk-alpine`** — сборка **`bootJar`** через **`java -classpath …/gradle-wrapper.jar … GradleWrapperMain`** (без `./gradlew`, чтобы не зависеть от CRLF); финальный образ **`eclipse-temurin:25-jre-alpine`**, `java -jar` fat-jar `module1-1.0-SNAPSHOT.jar` |
-| **Compose** | `docker-compose.yml`: сервис **`postgres`** (порт хоста **5433**), сервис **`app`** (сборка из Dockerfile, порт **8082**), **`depends_on`** с **healthcheck** Postgres |
+| **Compose** | `docker-compose.yml`: сервис **`postgres`** (порт хоста **5433**), сервис **`app`** (сборка из Dockerfile, порт **8083**), **`depends_on`** с **healthcheck** Postgres |
 
 ### Запуск и проверка (без доп. скриптов)
 
@@ -326,7 +326,7 @@ docker compose ps
 docker compose logs app --tail 40
 ```
 
-Ожидание: **`zil-postgres`** — healthy, **`zil-app`** — running. API: `http://localhost:8082/cars` (и `/clients`, `/rents`).
+Ожидание: **`zil-postgres`** — healthy, **`zil-app`** — running. API: `http://localhost:8083/cars` (и `/clients`, `/rents`).
 
 Только БД под **IntelliJ** / **`gradlew bootRun`**: `docker compose up -d postgres` (JDBC на хосте: `localhost:5433` — см. `application.properties`).
 

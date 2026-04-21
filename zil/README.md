@@ -30,7 +30,7 @@ chmod +x gradlew
 ./gradlew bootRun
 ```
 
-Сервер: **http://localhost:8082** (порт в `src/main/resources/application.properties`).
+Сервер: **http://localhost:8083** (порт в `src/main/resources/application.properties`). Контейнер **`zil-app`** и запуск из IntelliJ / **`gradlew bootRun`** используют **тот же** порт — одновременно два процесса API на одной машине не поднимайте; для разработки с БД в Docker достаточно `docker compose up -d postgres` и локального `bootRun`.
 
 Тесты:
 
@@ -102,9 +102,9 @@ zil/
 
 | Что открыть | URL |
 |-------------|-----|
-| Все машины | GET http://localhost:8082/cars |
-| Все клиенты | GET http://localhost:8082/clients |
-| Все аренды | GET http://localhost:8082/rents |
+| Все машины | GET http://localhost:8083/cars |
+| Все клиенты | GET http://localhost:8083/clients |
+| Все аренды | GET http://localhost:8083/rents |
 
 ---
 
@@ -138,7 +138,7 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 
 1. Запустите приложение (`bootRun`).
 2. Импортируйте **`postman_collection.json`**.
-3. Переменная базового URL должна указывать на `http://localhost:8082`.
+3. Переменная базового URL должна указывать на `http://localhost:8083`.
 
 Проверка доступности вручную: метод **GET**, URL `.../rents/availability`, вкладка Params — `model`, `date` (формат `YYYY-MM-DD`), `city`.
 
@@ -158,7 +158,7 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 |---------|-------------|
 | `Could not find a Java installation ... languageVersion=25` | Установите **JDK 25**, перезапустите терминал, проверьте `java -version` и переменную `JAVA_HOME`. |
 | `Project directory ... may be part of a composite build` / не находит задачи | Вы не в папке **`zil`**: `cd` в каталог, где лежит `gradlew.bat`. |
-| Порт занят (`Port ... already in use`) | В `application.properties` смените `server.port` на свободный (например `8083`). |
+| Порт занят (`Port ... already in use`) | В `application.properties` смените `server.port` на свободный (например `8084`) или остановите второй экземпляр приложения / контейнер `zil-app`. |
 | Ошибки компиляции | Из папки `zil`: `gradlew.bat clean test` |
 
 ---
@@ -180,7 +180,7 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 | Dockerfile | `zil/Dockerfile` |
 | Инициализация схемы (DDL) и начальные данные (DML) | `zil/src/main/resources/db/migration/` |
 | Приложение + БД в Docker Compose | `zil/docker-compose.yml` |
-| Демонстрация стенда | `docker compose ps`, логи `app`, `curl`/браузер на `http://localhost:8082/cars` и др. |
+| Демонстрация стенда | `docker compose ps`, логи `app`, `curl`/браузер на `http://localhost:8083/cars` и др. |
 
 ### Только PostgreSQL (приложение из IntelliJ или `gradlew bootRun`)
 
@@ -202,7 +202,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Ожидается: **`zil-postgres`** (healthy), **`zil-app`** (running). API: **http://localhost:8082/cars**
+Ожидается: **`zil-postgres`** (healthy), **`zil-app`** (running). API: **http://localhost:8083/cars**
 
 Логи приложения: `docker compose logs app` (должны быть строки Flyway про миграции).
 
