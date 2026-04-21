@@ -6,8 +6,36 @@
 
 ---
 
+## Два режима — не включайте оба сразу
+
+Один и тот же порт **8083** в `application.properties` используют и **контейнер `zil-app`**, и **приложение из IntelliJ** (`rental.Application` / `gradlew bootRun`). **Два процесса на 8083 одновременно нельзя** — получите `Web server failed to start. Port 8083 was already in use`.
+
+| Режим | Что запущено | Когда использовать |
+|--------|----------------|---------------------|
+| **Режим 1 — полный LAB3** | `docker compose up --build -d` → работают **`zil-postgres`** и **`zil-app`** | Сдача преподавателю, проверка «всё в Docker» |
+| **Режим 2 — отладка в IntelliJ** | Только **`zil-postgres`**: `docker compose up -d postgres`, контейнера **`zil-app` нет** | Разработка: Run в IDE на **8083** |
+
+**Перед режимом 2**, если вы до этого поднимали полный стенд:
+
+```powershell
+cd <путь>\zil
+docker compose stop app
+docker compose ps
+```
+
+В списке должен остаться **`zil-postgres`**, а **`zil-app`** — отсутствовать или **не запущен**. Потом запускайте **Run** в IntelliJ.
+
+**Перед режимом 1**, если запускали приложение из IDE — **остановите** зелёным квадратом в IntelliJ, затем:
+
+```powershell
+docker compose up --build -d
+```
+
+---
+
 ## Оглавление
 
+- [Два режима запуска (порт 8083 — не смешивать)](#два-режима--не-включайте-оба-сразу)
 1. [Краткая карта этапов (LAB1 → LAB3)](#1-краткая-карта-этапов-lab1--lab3)
 2. [LAB1 — контекст (выполнено ранее)](#2-lab1--контекст-выполнено-ранее)
 3. [LAB2 — контекст (выполнено ранее)](#3-lab2--контекст-выполнено-ранее)
@@ -107,32 +135,40 @@
 
 ## 7. Сценарий A: только PostgreSQL в Docker, приложение из IntelliJ / Gradle
 
-Удобно для отладки в IDE.
+Удобно для отладки в IDE. **Обязательно освободите порт 8083** (см. блок [«Два режима»](#два-режима--не-включайте-оба-сразу) выше).
 
 1. Запустите **Docker Desktop**.  
-2. В PowerShell:
+2. В PowerShell **сначала** убедитесь, что контейнер приложения не занимает 8083:
 
    ```powershell
    cd <путь>\zil
+   docker compose stop app
+   ```
+
+   (Если `zil-app` не было — команда просто ничего не изменит.)
+
+3. Поднимите только БД:
+
+   ```powershell
    docker compose up -d postgres
    docker compose ps
    ```
 
-   Должен быть **Up (healthy)** контейнер **`zil-postgres`**.
+   Должен быть **Up (healthy)** контейнер **`zil-postgres`**. Строки про **`zil-app`** в выводе быть не должно **или** контейнер не в состоянии `Up`.
 
-3. Запуск приложения:
+4. Запуск приложения:
    - либо в IntelliJ: класс **`rental.Application`**, **Run**;
    - либо в терминале: **`.\gradlew.bat bootRun`**
 
-4. Убедитесь в логах: подключение к **`jdbc:postgresql://localhost:5433/car_rental`**, Flyway отработал, строка вида **`Started Application`**.
+5. Убедитесь в логах: подключение к **`jdbc:postgresql://localhost:5433/car_rental`**, Flyway отработал, строка вида **`Started Application`**.
 
-5. Проверка API: [раздел 9](#9-проверка-api-curl-powershell-postman).
+6. Проверка API: [раздел 9](#9-проверка-api-curl-powershell-postman).
 
 ---
 
 ## 8. Сценарий B: полный стенд LAB3 (приложение + БД в Docker)
 
-Именно этот сценарий соответствует формулировке ТЗ «развернуть приложение и DB в docker compose».
+Именно этот сценарий соответствует формулировке ТЗ «развернуть приложение и DB в docker compose». **Перед запуском остановите приложение в IntelliJ**, если оно было запущено (иначе после остановки compose-контейнеров IDE снова не займёт 8083 до перезапуска — но обычно конфликт возникает наоборот: контейнер `zil-app` мешает IDE).
 
 1. Запустите **Docker Desktop**.  
 2. В PowerShell:
@@ -192,18 +228,59 @@ Invoke-RestMethod "http://localhost:8083/rents/availability?model=Toyota%20Camry
 
 ## 10. Сдача преподавателю: чеклист демонстрации
 
-1. Показать в репозитории файлы: **`zil/Dockerfile`**, **`zil/docker-compose.yml`**, **`zil/src/main/resources/db/migration/V1__init_schema.sql`**, **`V2__seed_data.sql`**.  
-2. Выполнить при преподавателе (из **`zil`**):
+### 10.1. Файлы в репозитории (показать в IDE или на GitHub)
 
-   ```powershell
-   docker compose up --build -d
-   docker compose ps
-   docker compose logs app --tail 40
-   ```
+| Что требует ТЗ | Файл |
+|----------------|------|
+| Dockerfile | `zil/Dockerfile` |
+| DDL (схема) | `zil/src/main/resources/db/migration/V1__init_schema.sql` |
+| DML (начальные данные) | `zil/src/main/resources/db/migration/V2__seed_data.sql` |
+| Compose: БД + приложение | `zil/docker-compose.yml` |
+| Настройки Flyway / JPA | `zil/src/main/resources/application.properties` (`spring.flyway.enabled`, `ddl-auto=validate`) |
 
-3. Открыть в браузере или через curl:  
-   **http://localhost:8083/cars** (и при желании `/clients`, `/rents`).  
-4. Кратко объяснить: **Flyway** применяет миграции; **Hibernate** в режиме **`validate`**; в Docker приложение ходит в БД по имени **`postgres:5432`**, с хоста — **`localhost:5433`**.
+### 10.2. Запуск полного стенда (режим сдачи LAB3)
+
+Из папки **`zil`**, при преподавателе:
+
+```powershell
+docker compose up --build -d
+docker compose ps
+docker compose logs app --tail 80
+```
+
+Ожидается: **`zil-postgres`** — **healthy**, **`zil-app`** — **Up**.
+
+### 10.3. Как показать работу **Flyway** (миграции)
+
+В логах контейнера **`app`** (или консоли IntelliJ в режиме A) преподавателю указывают строки **org.flywaydb** / **o.f.**, например:
+
+- **`Successfully validated N migrations`** — Flyway проверил файлы в `db/migration`.
+- **Первый запуск на пустой БД:** будут строки про **`Migrating schema`** и версии **`1`**, **`2`** (файлы `V1__…`, `V2__…`).
+- **Повторный запуск (БД уже заполнена):** **`Current version of schema "public": 2`** и **`Schema "public" is up to date. No migration necessary.`** — миграции уже применены, повторно SQL не выполняется.
+
+Дополнительно можно показать служебную таблицу Flyway в PostgreSQL:
+
+```powershell
+docker exec -it zil-postgres psql -U rental -d car_rental -c "SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank;"
+```
+
+Должны быть строки с версиями **1** и **2** (соответствуют `V1__init_schema` и `V2__seed_data`).
+
+Краткая формулировка для устного ответа: *«Схему и INSERT создают SQL-миграции; Hibernate только сверяет сущности с уже существующими таблицами (`validate`), новые таблицы сам не создаёт.»*
+
+### 10.4. Проверка API после стенда
+
+Браузер или терминал:
+
+```bat
+curl.exe http://localhost:8083/cars
+```
+
+При необходимости **`/clients`**, **`/rents`**. Данные в JSON должны совпадать по смыслу с **`V2__seed_data.sql`**.
+
+### 10.5. Перед показом из IntelliJ
+
+Если переключаетесь с **режима B** на запуск **Run** в IDE: выполните **`docker compose stop app`** и только потом стартуйте **`rental.Application`** (см. [«Два режима»](#два-режима--не-включайте-оба-сразу)).
 
 ---
 
@@ -236,12 +313,24 @@ git branch
 
 ## 13. Быстрый старт LAB3 (шпаргалка)
 
+**Полный стенд (сдача LAB3):**
+
 ```powershell
-cd <путь>\first_laba\zil
+cd <путь>\zil
 docker compose up --build -d
 docker compose ps
 curl.exe http://localhost:8083/cars
 ```
+
+**Только IDE + Postgres** (сначала освободить 8083):
+
+```powershell
+cd <путь>\zil
+docker compose stop app
+docker compose up -d postgres
+```
+
+Затем **Run** в IntelliJ или `.\gradlew.bat bootRun`.
 
 Остановка без удаления данных:
 

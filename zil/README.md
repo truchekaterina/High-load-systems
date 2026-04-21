@@ -1,6 +1,6 @@
 # Сервис аренды автомобилей (Spring Boot)
 
-**Полное руководство по LAB1–LAB3, запуску и сдаче:** **[LABS_GUIDE_RU.md](LABS_GUIDE_RU.md)**.
+**Полное руководство по LAB1–LAB3, запуску и сдаче:** **[LABS_GUIDE_RU.md](LABS_GUIDE_RU.md)** (в начале — **«Два режима»**: как не получить ошибку «Port 8083 already in use» между Docker и IntelliJ).
 
 Одно приложение **Spring Boot 4**: REST API для машин, клиентов и аренд.
 
