@@ -1,12 +1,10 @@
-# PostgreSQL + (опционально) pgAdmin — LAB2
-# Запуск из папки zil: docker compose up -d
+# LAB3: PostgreSQL + Spring Boot.
+# 1) Собрать jar: prepare-docker.ps1 или prepare-docker.bat
+# 2) Запуск: docker compose up --build -d
+# Если app снова падает на java: только БД — docker compose up -d postgres, приложение — gradlew bootRun (localhost:5433).
 #
-# Запишите для подключения из Spring Boot (application.properties):
-#   хост:     localhost
-#   порт:     5433  (на хосте; внутри сети compose — 5432)
-#   БД:       car_rental
-#   пользователь: rental
-#   пароль:   rental_pass
+# IntelliJ / хост: jdbc:postgresql://localhost:5433/car_rental
+# Контейнер app:  jdbc:postgresql://postgres:5432/car_rental
 
 services:
   postgres:
@@ -17,7 +15,6 @@ services:
       POSTGRES_PASSWORD: rental_pass
       POSTGRES_DB: car_rental
     ports:
-      # 5433 на хосте: чтобы не пересекаться с локальным PostgreSQL на Windows (часто слушает :5432)
       - "5433:5432"
     volumes:
       - zil_pgdata:/var/lib/postgresql/data
@@ -25,20 +22,22 @@ services:
       test: ["CMD-SHELL", "pg_isready -U rental -d car_rental"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: zil-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: "False"
-    ports:
-      - "5050:80"
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zil-app
     depends_on:
       postgres:
         condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/car_rental
+      SPRING_DATASOURCE_USERNAME: rental
+      SPRING_DATASOURCE_PASSWORD: rental_pass
+    ports:
+      - "8082:8082"
 
 volumes:
   zil_pgdata:

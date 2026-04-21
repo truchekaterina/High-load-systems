@@ -3,7 +3,8 @@
 Одно приложение **Spring Boot 4**: REST API для машин, клиентов и аренд.
 
 **LAB1:** данные в памяти (HashMap), после перезапуска сбрасываются.  
-**LAB2** (ветка **`lab2-spring-data-jpa`**): данные в **PostgreSQL**, доступ через **Spring Data JPA** (`JpaRepository`); тесты — на **H2** без Docker. Ниже раздел **«LAB2: показ преподавателю»** — пошаговый запуск и что говорить на защите.
+**LAB2** (ветка **`lab2-spring-data-jpa`**): **PostgreSQL**, **Spring Data JPA**; тесты на **H2** без Docker.  
+**LAB3:** схема и начальные данные — **Flyway** (`src/main/resources/db/migration`), контейнеризация — **`Dockerfile`** + **`docker compose`** (postgres + app).
 
 ---
 
@@ -42,7 +43,7 @@ gradlew.bat test
 Запрос идёт сверху вниз и возвращается обратно:
 
 ```
-HTTP  →  Controller  →  Service  →  Repository  →  HashMap в памяти
+HTTP  →  Controller  →  Service  →  Repository  →  PostgreSQL (JPA)
 HTTP  ←  Controller  ←  Service  ←  Repository  ←
 ```
 
@@ -51,10 +52,10 @@ HTTP  ←  Controller  ←  Service  ←  Repository  ←
 | Точка входа | `rental.Application` | Запуск Spring Boot, сканирует пакет `rental` |
 | REST | `rental.controller` | URL → вызов сервиса, JSON наружу |
 | Бизнес-логика | `rental.service` | Правила (в т.ч. проверка доступности авто) |
-| Хранение | `rental.repository` | `Map<UUID, …>` в памяти |
+| Хранение | `rental.repository` | `JpaRepository` → таблицы в PostgreSQL |
 | Модели | `rental.model` | Car, Client, Rent |
 | Ошибки | `rental.exception` | `EntityException` → через `EntityExceptionHandler` ответ **400** |
-| Настройка | `rental.configuration` | `ServicesConfig` — бины сервисов; `DataInitializer` — тестовые данные при старте |
+| Настройка | `rental.configuration` | `ServicesConfig` — бины сервисов; стартовые данные — миграция Flyway `V2__seed_data.sql` |
 
 Сервисы **не** помечены `@Service`: их создаёт `ServicesConfig` вручную, репозитории Spring находит сам (`@Repository`).
 
@@ -71,9 +72,10 @@ zil/
 │   ├── repository/
 │   ├── model/
 │   ├── exception/           EntityException, EntityExceptionHandler
-│   └── configuration/       ServicesConfig, DataInitializer
+│   └── configuration/       ServicesConfig
 ├── src/main/resources/
-│   └── application.properties
+│   ├── application.properties
+│   └── db/migration/        Flyway: V1__init_schema.sql, V2__seed_data.sql
 ├── src/test/java/rental/controller/   интеграционные тесты (MockMvc)
 ├── build.gradle
 ├── settings.gradle
@@ -87,7 +89,7 @@ zil/
 
 ## Тестовые данные при старте
 
-`DataInitializer` создаёт 4 автомобиля, 4 клиента, 4 аренды (фиксированные UUID — удобно для Postman).
+Миграция **`V2__seed_data.sql`** создаёт 4 автомобиля, 4 клиента, 4 аренды (фиксированные UUID — удобно для Postman).
 
 Примеры:
 
@@ -133,7 +135,7 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 
 Проверка доступности вручную: метод **GET**, URL `.../rents/availability`, вкладка Params — `model`, `date` (формат `YYYY-MM-DD`), `city`.
 
-Примеры для данных из `DataInitializer` (Toyota Camry в Moscow, аренды 1–10 и 15–20 марта):
+Примеры для данных из миграции (Toyota Camry в Moscow, аренды 1–10 и 15–20 марта):
 
 | date | Ожидание | Почему |
 |------|----------|--------|
@@ -156,31 +158,41 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 
 ## Ограничения учебного проекта
 
-Нет БД, безопасности и сложной валидации — только то, что нужно для лабораторной.
+Нет продакшен-безопасности и тяжёлой валидации — только то, что нужно для лабораторной.
 
 ---
 
-## LAB2: PostgreSQL в Docker
+## LAB2 / LAB3: Docker
 
-**Подробный пошаговый план всего LAB2 (JPA, репозитории, тесты, git):** файл **[LAB2_PLAN.md](LAB2_PLAN.md)** в папке `zil`.
+**План LAB2 (JPA, репозитории, тесты):** **[LAB2_PLAN.md](LAB2_PLAN.md)**.
 
-В папке **`zil`** есть **`docker-compose.yml`** (PostgreSQL + pgAdmin).
+### Только PostgreSQL (приложение из IntelliJ или `gradlew bootRun`)
 
-**Запуск у себя на ПК** (сначала откройте **Docker Desktop** и дождитесь, пока иконка перестанет «крутиться»):
+Откройте **Docker Desktop**, затем в папке **`zil`**:
 
 ```bat
-cd путь\к\zil
-docker compose up -d
+docker compose up -d postgres
 ```
 
-Или двойной щелчок по **`docker-up.bat`** в папке `zil`.
+Или двойной щелчок по **`docker-up.bat`**. БД: **`localhost:5433`**, пользователь **`rental`**, БД **`car_rental`**, пароль **`rental_pass`**.
 
-Проверка: `docker compose ps` — контейнеры `zil-postgres`, `zil-pgadmin` в статусе **running**.  
-pgAdmin: **http://localhost:5050** (логин `admin@example.com`, пароль `admin`). Подключение к серверу БД: хост **`postgres`**, порт **5432**, user **`rental`**, БД **`car_rental`**, пароль **`rental_pass`**.
+### Полный стенд LAB3: PostgreSQL + приложение в контейнере
 
-Если **Spring Boot на вашем ПК** (IntelliJ, `gradlew bootRun`) подключается к PostgreSQL, используйте **`localhost:5433`** — это внешний порт из `docker-compose.yml`, чтобы не конфликтовать с локальным PostgreSQL на 5432 (см. `application.properties`).
+В папке **`zil`**:
 
-Если видите **«Docker Desktop is unable to start»** — в Docker Desktop: **Troubleshoot → Restart** или включите **WSL 2** / обновите Windows; без работающего демона команды `docker` не выполняются.
+```powershell
+docker compose down -v
+docker compose up --build -d
+docker compose ps
+```
+
+Ожидается: **`zil-postgres`** (healthy), **`zil-app`** (running). API: **http://localhost:8082/cars**
+
+Логи приложения: `docker compose logs app` (должны быть строки Flyway про миграции).
+
+При сбоях сборки образа (обрыв сети): перезапуск Docker Desktop и повтор `docker compose up --build -d`.
+
+Если **«Docker Desktop is unable to start»** — **Troubleshoot → Restart** или проверка **WSL 2**; без демона Docker команды не выполняются.
 
 ---
 
