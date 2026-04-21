@@ -38,6 +38,11 @@ dependencies {
 
     // Тесты без Docker Postgres — in-memory H2
     testRuntimeOnly 'com.h2database:h2'
+
+    // Spring Boot 4: автоконфигурация Flyway идёт из стартера, одного flyway-core недостаточно.
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    // Поддержка PostgreSQL в Flyway (драйвер/особенности БД)
+    implementation 'org.flywaydb:flyway-database-postgresql'
 }
 
 tasks.named('test') {
