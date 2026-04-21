@@ -85,10 +85,9 @@
 
 1. **JDK 25** (например Eclipse Temurin). Проверка: `java -version`.  
 2. **Docker Desktop** (для LAB3 и для PostgreSQL в LAB2-стиле). Проверка: `docker version`, при необходимости `docker compose version`.  
-3. Все команды Gradle и Docker ниже выполняются из папки **`zil`**:
+3. Все команды Gradle и Docker ниже выполняются из папки **`zil`** (каталог, где лежат `build.gradle` и `gradlew.bat`), например:
 
-   `C:\Users\1\Desktop\neurohelp\first_laba\zil`  
-   (у вас путь может отличаться — используйте свой каталог с `build.gradle` и `gradlew.bat`).
+   `<корень_клонированного_репозитория>\zil`
 
 Дополнительные **bat/ps1-скрипты** для сдачи **не обязательны**: достаточно **`gradlew.bat`** и **`docker compose`**.
 
@@ -114,7 +113,7 @@
 2. В PowerShell:
 
    ```powershell
-   cd C:\Users\1\Desktop\neurohelp\first_laba\zil
+   cd <путь>\zil
    docker compose up -d postgres
    docker compose ps
    ```
@@ -139,7 +138,7 @@
 2. В PowerShell:
 
    ```powershell
-   cd C:\Users\1\Desktop\neurohelp\first_laba\zil
+   cd <путь>\zil
    docker compose down
    docker compose up --build -d
    ```
@@ -193,7 +192,7 @@ Invoke-RestMethod "http://localhost:8083/rents/availability?model=Toyota%20Camry
 
 ## 10. Сдача преподавателю: чеклист демонстрации
 
-1. Показать в репозитории файлы: **`Dockerfile`**, **`docker-compose.yml`**, **`db/migration/V1__…`**, **`V2__…`**.  
+1. Показать в репозитории файлы: **`zil/Dockerfile`**, **`zil/docker-compose.yml`**, **`zil/src/main/resources/db/migration/V1__init_schema.sql`**, **`V2__seed_data.sql`**.  
 2. Выполнить при преподавателе (из **`zil`**):
 
    ```powershell
@@ -211,7 +210,7 @@ Invoke-RestMethod "http://localhost:8083/rents/availability?model=Toyota%20Camry
 ## 11. Git: перед отправкой в GitHub
 
 ```powershell
-cd C:\Users\1\Desktop\neurohelp\first_laba
+cd <корень_репозитория>\first_laba
 git status
 git branch
 ```
