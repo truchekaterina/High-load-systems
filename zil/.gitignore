@@ -10,6 +10,10 @@ dist/
 # Compiled Java class files
 *.class
 
+# Python venv (LAB5 и скрипты)
+.venv/
+venv/
+
 # Compiled Python bytecode
 *.py[cod]
 
