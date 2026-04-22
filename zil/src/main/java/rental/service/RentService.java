@@ -1,6 +1,7 @@
 package rental.service;
 
 import org.springframework.util.ObjectUtils;
+import rental.dto.AvailableCarsCountResponse;
 import rental.exception.EntityException;
 import rental.exception.EntityMessages;
 import rental.model.Car;
@@ -68,5 +69,16 @@ public class RentService {
         }
         return carsInCity.stream()
                 .anyMatch(car -> rentRepository.countOverlappingRentOnDate(car.getId(), date) == 0);
+    }
+
+    public AvailableCarsCountResponse countAvailableCars(String model, String city, LocalDate date) {
+        List<Car> carsInCity = carRepository.findByModelAndCity(model, city);
+        if (date == null) {
+            return new AvailableCarsCountResponse(model, city, null, carsInCity.size());
+        }
+        long free = carsInCity.stream()
+                .filter(car -> rentRepository.countOverlappingRentOnDate(car.getId(), date) == 0)
+                .count();
+        return new AvailableCarsCountResponse(model, city, date, free);
     }
 }

@@ -335,6 +335,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "GET Availability count — на дату (сколько свободно)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/rents/availability/count?model=Toyota Camry&city=Moscow&date=2026-03-12",
+              "host": ["{{baseUrl}}"],
+              "path": ["rents", "availability", "count"],
+              "query": [
+                { "key": "model", "value": "Toyota Camry" },
+                { "key": "city", "value": "Moscow" },
+                { "key": "date", "value": "2026-03-12" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Availability count — без даты (всего машин модели в городе)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/rents/availability/count?model=Toyota Camry&city=Moscow",
+              "host": ["{{baseUrl}}"],
+              "path": ["rents", "availability", "count"],
+              "query": [
+                { "key": "model", "value": "Toyota Camry" },
+                { "key": "city", "value": "Moscow" }
+              ]
+            }
+          }
         }
       ]
     }
