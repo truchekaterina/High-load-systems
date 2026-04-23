@@ -1,3 +1,7 @@
 summary*.json
 reports/summary-vus-*.json
 reports/avg_vs_vus.png
+
+# Кэш Python (plot_avg_vs_vus.py) — в репозиторий не нужен
+__pycache__/
+*.pyc

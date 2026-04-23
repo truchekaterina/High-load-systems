@@ -6,7 +6,8 @@
 
 **LAB1:** данные в памяти (HashMap), после перезапуска сбрасываются.  
 **LAB2** (ветка **`lab2-spring-data-jpa`**): **PostgreSQL**, **Spring Data JPA**; тесты на **H2** без Docker.  
-**LAB3:** схема и начальные данные — **Flyway** (`src/main/resources/db/migration`: **DDL** в `V1__…`, **DML** в `V2__…`); контейнеризация — многостадийный **`Dockerfile`** (сборка **`bootJar`** внутри образа, **Alpine Temurin**) + **`docker compose`** (сервисы **postgres** и **app**). Один запуск полного стенда из папки **`zil`**: `docker compose up --build -d`.
+**LAB3:** схема и начальные данные — **Flyway** (`src/main/resources/db/migration`: **DDL** в `V1__…`, **DML** в `V2__…`); контейнеризация — многостадийный **`Dockerfile`** (сборка **`bootJar`** внутри образа, **Alpine Temurin**) + **`docker compose`** (сервисы **postgres** и **app**). Один запуск полного стенда из папки **`zil`**: `docker compose up --build -d`.  
+**LAB4 (нагрузка k6):** скрипты в **`k6/`** — сценарий **`rental-mixed.js`**, свип точек VU в PowerShell **`run-sweep.ps1`**, график **`plot_avg_vs_vus.py`**. Кратко: **[k6/README_LAB4_RU.md](k6/README_LAB4_RU.md)**, план: **[documentation/LAB4_PLAN.md](documentation/LAB4_PLAN.md)**.
 
 Пошаговый план LAB2 (история/шпаргалка): **[LAB2_PLAN.md](LAB2_PLAN.md)** — в конце файла есть **дополнение по LAB3**. Развёрнуто только про LAB3: **[LAB3_PLAN.md](LAB3_PLAN.md)**.
 
@@ -90,6 +91,9 @@ zil/
 ├── LABS_GUIDE_RU.md                   единое руководство LAB1–LAB3 и запуск
 ├── LAB2_PLAN.md                       план LAB2 + дополнение LAB3
 ├── LAB3_PLAN.md                       подробный план только LAB3
+├── documentation/
+│   └── LAB4_PLAN.md                   LAB4: k6, график avg vs VU
+├── k6/                                LAB4: rental-mixed.js, run-sweep.ps1, README_LAB4_RU.md
 └── postman_collection.json            необязательно: импорт в Postman
 ```
 
@@ -122,6 +126,7 @@ zil/
 | GET | `/rents`, `/rents/{id}` | Аналогично арендам |
 | POST, PUT, DELETE | `/rents`, `/rents/{id}` | |
 | **GET** | **`/rents/availability`** | Доступность авто **по названию модели** на дату в городе |
+| **GET** | **`/stats`** | Сводка: число машин, клиентов, аренд (для LAB4 / k6) |
 
 Параметры доступности (все обязательны):
 
@@ -212,6 +217,15 @@ docker compose ps
 При сбоях сборки образа (обрыв сети): перезапуск Docker Desktop и повтор `docker compose up --build -d`.
 
 Если **«Docker Desktop is unable to start»** — **Troubleshoot → Restart** или проверка **WSL 2**; без демона Docker команды не выполняются.
+
+---
+
+## LAB4: k6 (Windows, PowerShell)
+
+1. Поднять API (`docker compose up --build -d` или `gradlew.bat bootRun` с БД; не занимайте **8083** двумя процессами).
+2. В папке **`k6`**: **`.\run-sweep.ps1`** — серия прогонов с разным `TARGET_VUS`, JSON в `k6/reports/`, затем `avg_vs_vus.png` (нужны **k6** и **Python** + `matplotlib`).
+
+Подробные команды и переменные среды: **[k6/README_LAB4_RU.md](k6/README_LAB4_RU.md)**. Смысл шагов по заданию: **[documentation/LAB4_PLAN.md](documentation/LAB4_PLAN.md)**.
 
 ---
 
