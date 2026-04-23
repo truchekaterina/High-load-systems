@@ -23,7 +23,7 @@
 | `executor: 'ramping-vus'`, `k6/http` | Только в **`load.js`** |
 | POST одной «простой» сущности (без ссылок) | Сейчас: **`POST /clients`** |
 | GET «дополнительно», статистика | **`GET /stats`** в бэкенде (`StatsController`) — добавите вызов в k6 на шаге 2 |
-| Пропорция **50/50**, настраиваемо | Переменная **`CREATE_SHARE`** (0…1) — на шаге 2 |
+| Пропорция **50/50** | Два **параллельных** сценария k6: одни VU только `POST /clients`, другие только `GET /stats` (см. шаг 2) |
 | График **avg** от **VU**, **4–5 точек**, удвоение | Прогоны **`load-sweep.js`** + **`plot.py`** |
 | Git: js-конфиг + генератор графика | `load.js`, `load-sweep.js`, `plot.py` |
 
@@ -68,30 +68,25 @@ k6 run --summary-export summary-ramping.json load.js
 
 ---
 
-## Шаг 2. Добавить GET статистики и пропорцию 50/50
+## Шаг 2. GET статистики + пропорция 50/50 (два пула, без рандома)
 
-В **`load.js`** внутри `export default function () { ... }`:
+Смысл: **две группы** виртуальных пользователей работают **одновременно** — у одной только `POST /clients`, у другой только `GET /stats`. В сумме нагрузка **~50/50** (в `load.js` на первом «плато» 3+2=5, дальше 5+5=10, 10+10=20).
 
-1. Задайте долю (в начале файла, после `BASE_URL`):
+В **`load.js`**: в `options` два **сценария** (`scenarios: { post_clients: …, get_stats: … }`), у каждого:
 
-   ```javascript
-   const CREATE_SHARE = Math.min(1, Math.max(0, Number(__ENV.CREATE_SHARE ?? '0.5')));
-   ```
+- `executor: 'ramping-vus'`;
+- `exec: 'postClients'` или `exec: 'getStats'`;
+- `stages` с **своим** `target` (суммарно нужное число VU, пополам).
 
-2. Вместо одного `http.post` сделайте ветвление:
+В коде — две **именованные** функции `export function postClients()` и `export function getStats()` (см. текущий `load.js`).
 
-   - с вероятностью `CREATE_SHARE` — **`POST /clients`** (как сейчас);
-   - иначе — **`http.get(\`${BASE_URL}/stats\`)`**.
-
-3. У обоих запросов можно добавить **`tags: { endpoint: '...' }`** для наглядности в отчёте k6.
-
-Запуск с настройкой доли:
+Запуск:
 
 ```text
-k6 run -e CREATE_SHARE=0.5 load.js
+k6 run load.js
 ```
 
-**Важно:** после правки **`load.js`** скопируйте то же тело **`export default function`** в **`load-sweep.js`**, чтобы график считался по тому же сценарию.
+**`load-sweep.js`:** тот же принцип (два сценария, те же `exec`), но `constant-vus`; `TARGET_VUS` — **суммарно**; пополам делится между пулами (`Math.floor/2` и остаток).
 
 ---
 
