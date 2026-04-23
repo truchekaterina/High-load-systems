@@ -10,7 +10,7 @@
 
 **k6** многократно вызывает ваш REST API с разным числом виртуальных пользователей (**VU**). Вы смотрите, как меняется **среднее время ответа** и строите **график avg от VU** (несколько точек, удобно удваивать нагрузку: 5 → 10 → 20 → 40 → 80).
 
-В репозиторий по ТЗ кладёте **JS-профиль** (`load.js` и при необходимости `load-sweep.js`) и **генератор графика** (`plot.py`). Сам k6 график не рисует — только сохраняет метрики в JSON (`--summary-export`).
+В репозиторий по ТЗ кладёте **JS-профиль** (`load.js` и при необходимости `load-sweep.js`) и **генератор графика** (`sweep_plot.py`: прогон точек + PNG с **двумя линиями** — POST и GET). Сам k6 график не рисует — только сохраняет метрики в JSON (`--summary-export`).
 
 ---
 
@@ -24,8 +24,8 @@
 | POST одной «простой» сущности (без ссылок) | Сейчас: **`POST /clients`** |
 | GET «дополнительно», статистика | **`GET /stats`** в бэкенде (`StatsController`) — добавите вызов в k6 на шаге 2 |
 | Пропорция **50/50** | Два **параллельных** сценария k6: одни VU только `POST /clients`, другие только `GET /stats` (см. шаг 2) |
-| График **avg** от **VU**, **4–5 точек**, удвоение | Прогоны **`load-sweep.js`** + **`plot.py`** |
-| Git: js-конфиг + генератор графика | `load.js`, `load-sweep.js`, `plot.py` |
+| График **avg** от **VU**, **4–5 точек**, удвоение, **две линии** (POST / GET) | **`load-sweep.js`** (Trend) + **`sweep_plot.py`** |
+| Git: js-конфиг + генератор графика | `load.js`, `load-sweep.js`, `sweep_plot.py` |
 
 «Киносеанс, пользователь…» в задании — примеры; у нас аналог простой сущности — **клиент** (`/clients`).
 
@@ -118,12 +118,14 @@ http.get(`${BASE_URL}/cars`, { tags: { endpoint: 'list_cars' } });
    k6 run -e TARGET_VUS=80 -e DURATION=45s --summary-export summary-80.json load-sweep.js
    ```
 
-3. Установите **matplotlib** и постройте картинку:
+3. Установите **matplotlib** и за один раз прогнать точки + график (две кривые: POST, GET):
 
    ```text
    pip install matplotlib
-   python plot.py --out avg_vs_vus.png 5 summary-5.json 10 summary-10.json 20 summary-20.json 40 summary-40.json 80 summary-80.json
+   python sweep_plot.py
    ```
+
+   Либо вручную: те же `k6 run`, затем `python sweep_plot.py --plot-only` (после ручного прогона).
 
 Файлы **`summary-*.json`** в `.gitignore` папки `k6` — в git обычно не коммитят; в отчёт приложите **`avg_vs_vus.png`** и опишите оси.
 
@@ -133,7 +135,7 @@ http.get(`${BASE_URL}/cars`, { tags: { endpoint: 'list_cars' } });
 
 - `zil/k6/load.js` — профиль **ramping-vus** для методички  
 - `zil/k6/load-sweep.js` — тот же сценарий приёма, но **constant-vus** для точек графика  
-- `zil/k6/plot.py` — генератор графика  
+- `zil/k6/sweep_plot.py` — прогон k6-точек + генератор графика (две линии POST/GET)  
 - по желанию: `zil/k6/.gitignore`  
 - этот файл: `zil/documentation/LAB4_PLAN.md`  
 - бэкенд **`GET /stats`**, если добавляли под лабу: `zil/src/main/java/rental/controller/StatsController.java`
@@ -146,7 +148,7 @@ http.get(`${BASE_URL}/cars`, { tags: { endpoint: 'list_cars' } });
 |---------|----------|
 | `connection refused` на 8083 | Не запущен Docker / приложение |
 | Ошибки после изменения только `load.js` | Обновите **`load-sweep.js`**, иначе график будет по старой логике |
-| `plot.py` падает | `pip install matplotlib` |
+| `sweep_plot.py` падает | `pip install matplotlib`; старые `summary-*.json` без Trend — пересоберите через `load-sweep.js` |
 
 ---
 
