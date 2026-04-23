@@ -10,7 +10,7 @@
 
 **k6** многократно вызывает ваш REST API с разным числом виртуальных пользователей (**VU**). Вы смотрите, как меняется **среднее время ответа** и строите **график avg от VU** (несколько точек, удобно удваивать нагрузку: 5 → 10 → 20 → 40 → 80).
 
-В репозиторий по ТЗ кладёте **JS-профиль** (`load.js` и при необходимости `load-sweep.js`) и **генератор графика** (`sweep_plot.py`: прогон точек + PNG с **двумя линиями** — POST и GET). Сам k6 график не рисует — только сохраняет метрики в JSON (`--summary-export`).
+В репозиторий по ТЗ кладёте **один JS-профиль** (`load.js`: ramping **или** constant-vu через `TARGET_VUS`) и **генератор графика** (`sweep_plot.py`: прогон точек + PNG с **двумя линиями** — POST и GET). Сам k6 график не рисует — только сохраняет метрики в JSON (`--summary-export`).
 
 ---
 
@@ -24,8 +24,8 @@
 | POST одной «простой» сущности (без ссылок) | Сейчас: **`POST /clients`** |
 | GET «дополнительно», статистика | **`GET /stats`** в бэкенде (`StatsController`) — добавите вызов в k6 на шаге 2 |
 | Пропорция **50/50** | Два **параллельных** сценария k6: одни VU только `POST /clients`, другие только `GET /stats` (см. шаг 2) |
-| График **avg** от **VU**, **4–5 точек**, удвоение, **две линии** (POST / GET) | **`load-sweep.js`** (Trend) + **`sweep_plot.py`** |
-| Git: js-конфиг + генератор графика | `load.js`, `load-sweep.js`, `sweep_plot.py` |
+| График **avg** от **VU**, **4–5 точек**, удвоение, **две линии** (POST / GET) | **`load.js`** с `-e TARGET_VUS=…` (Trend) + **`sweep_plot.py`** |
+| Git: js-конфиг + генератор графика | `load.js`, `sweep_plot.py` |
 
 «Киносеанс, пользователь…» в задании — примеры; у нас аналог простой сущности — **клиент** (`/clients`).
 
@@ -43,15 +43,14 @@ docker compose up --build -d
 
 ---
 
-## Шаг 1. Самый базовый сценарий (уже в репозитории)
+## Шаг 1. Сценарий в репозитории: один `load.js`, два режима
 
 Файл **`zil/k6/load.js`**:
 
-- только **`executor: 'ramping-vus'`**;
-- только **`import http from 'k6/http'`**;
-- в каждой итерации один запрос: **`POST /clients`** с уникальными `driverLicense` / телефоном (через `uuid` и номер итерации).
+- по умолчанию (без `TARGET_VUS`) — **`ramping-vus`**, два параллельных сценария POST/GET, метрики **Trend** `post_req_duration` / `get_req_duration`;
+- с **`-e TARGET_VUS=…`** — **`constant-vus`** (режим точек графика).
 
-Запуск:
+Запуск (методичка, ramping):
 
 ```text
 cd zil\k6
@@ -63,8 +62,6 @@ k6 run load.js
 ```text
 k6 run --summary-export summary-ramping.json load.js
 ```
-
-Пока вы **не добавляете** второй эндпойнт — так и задумано: сначала «потыкать» один POST.
 
 ---
 
@@ -86,7 +83,7 @@ k6 run --summary-export summary-ramping.json load.js
 k6 run load.js
 ```
 
-**`load-sweep.js`:** тот же принцип (два сценария, те же `exec`), но `constant-vus`; `TARGET_VUS` — **суммарно**; пополам делится между пулами (`Math.floor/2` и остаток).
+Режим **constant-vu** (график): `k6 run -e TARGET_VUS=10 -e DURATION=45s load.js` — те же `exec`, `TARGET_VUS` **суммарно**, пополам по пулам.
 
 ---
 
@@ -100,22 +97,22 @@ http.get(`${BASE_URL}/cars`, { tags: { endpoint: 'list_cars' } });
 
 и `check` на статус 200. Так вы явно нагружаете **получение данных одной таблицы**.
 
-Снова синхронизируйте **`load-sweep.js`** с **`load.js`**.
+Правки делаются в **одном** `load.js` (и для ramping, и для `TARGET_VUS`).
 
 ---
 
 ## Шаг 4. График avg vs VU (4–5 точек)
 
-1. Используйте **`load-sweep.js`**: там **`constant-vus`**, число VU задаётся **`TARGET_VUS`**, длительность **`DURATION`**.
+1. В **`load.js`** с **`-e TARGET_VUS=…`** включается **`constant-vus`**; длительность — **`DURATION`**.
 
-2. Из **`zil/k6`** в **cmd** несколько прогонов (пример для 5, 10, 20, 40, 80):
+2. Из **`zil/k6`** несколько прогонов (пример для 5, 10, 20, 40, 80):
 
    ```text
-   k6 run -e TARGET_VUS=5 -e DURATION=45s --summary-export summary-5.json load-sweep.js
-   k6 run -e TARGET_VUS=10 -e DURATION=45s --summary-export summary-10.json load-sweep.js
-   k6 run -e TARGET_VUS=20 -e DURATION=45s --summary-export summary-20.json load-sweep.js
-   k6 run -e TARGET_VUS=40 -e DURATION=45s --summary-export summary-40.json load-sweep.js
-   k6 run -e TARGET_VUS=80 -e DURATION=45s --summary-export summary-80.json load-sweep.js
+   k6 run -e TARGET_VUS=5 -e DURATION=45s --summary-export summary-5.json load.js
+   k6 run -e TARGET_VUS=10 -e DURATION=45s --summary-export summary-10.json load.js
+   k6 run -e TARGET_VUS=20 -e DURATION=45s --summary-export summary-20.json load.js
+   k6 run -e TARGET_VUS=40 -e DURATION=45s --summary-export summary-40.json load.js
+   k6 run -e TARGET_VUS=80 -e DURATION=45s --summary-export summary-80.json load.js
    ```
 
 3. Установите **matplotlib** и за один раз прогнать точки + график (две кривые: POST, GET):
@@ -133,8 +130,7 @@ http.get(`${BASE_URL}/cars`, { tags: { endpoint: 'list_cars' } });
 
 ## Шаг 5. Что коммитить в git
 
-- `zil/k6/load.js` — профиль **ramping-vus** для методички  
-- `zil/k6/load-sweep.js` — тот же сценарий приёма, но **constant-vus** для точек графика  
+- `zil/k6/load.js` — **ramping-vus** (по умолчанию) и **constant-vus** (с `-e TARGET_VUS=…`) в одном файле  
 - `zil/k6/sweep_plot.py` — прогон k6-точек + генератор графика (две линии POST/GET)  
 - по желанию: `zil/k6/.gitignore`  
 - этот файл: `zil/documentation/LAB4_PLAN.md`  
@@ -147,8 +143,8 @@ http.get(`${BASE_URL}/cars`, { tags: { endpoint: 'list_cars' } });
 | Симптом | Действие |
 |---------|----------|
 | `connection refused` на 8083 | Не запущен Docker / приложение |
-| Ошибки после изменения только `load.js` | Обновите **`load-sweep.js`**, иначе график будет по старой логике |
-| `sweep_plot.py` падает | `pip install matplotlib`; старые `summary-*.json` без Trend — пересоберите через `load-sweep.js` |
+| Логика POST/GET разъехалась | Меняется **один** `load.js` |
+| `sweep_plot.py` падает | `pip install matplotlib`; старые `summary-*.json` без Trend — пересоберите: `k6 run -e TARGET_VUS=… load.js` |
 
 ---
 
