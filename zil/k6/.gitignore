@@ -1,1 +1,3 @@
 summary*.json
+reports/summary-vus-*.json
+reports/avg_vs_vus.png
