@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-LAB4: несколько прогонов k6 (load-sweep.js) + график avg vs VU с двумя линиями: POST /clients, GET /stats.
+LAB4: несколько прогонов k6 (load.js с -e TARGET_VUS=…) + график avg vs VU с двумя линиями: POST /clients, GET /stats.
 
-Метрики в summary (Trend из load-sweep.js): post_req_duration, get_req_duration.
+Метрики в summary (Trend из load.js): post_req_duration, get_req_duration.
 При каждом запуске k6 --summary-export и --out PNG перезаписывают файлы.
 
 Зависимости: k6 в PATH, pip install matplotlib
@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 K6_DIR = Path(__file__).resolve().parent
-LOAD_SWEEP = K6_DIR / "load-sweep.js"
+LOAD_SCRIPT = K6_DIR / "load.js"
 
 POST_METRIC = "post_req_duration"
 GET_METRIC = "get_req_duration"
@@ -41,7 +41,7 @@ def read_metric_avg(data: dict, name: str) -> float:
         return float(m["avg"])
     raise SystemExit(
         f"В summary нет avg для метрики «{name}». "
-        "Нужен `k6 run ... load-sweep.js` с Trend post_req_duration / get_req_duration."
+        "Нужен `k6 run -e TARGET_VUS=... load.js` с Trend post_req_duration / get_req_duration."
     )
 
 
@@ -84,7 +84,7 @@ def plot_two_lines(
 
 def main() -> None:
     p = argparse.ArgumentParser(
-        description="k6 load-sweep: все точки + график (две линии POST/GET); summary и PNG перезаписываются"
+        description="k6 load.js (sweep): все точки + график (две линии POST/GET); summary и PNG перезаписываются"
     )
     p.add_argument(
         "--duration",
@@ -144,8 +144,8 @@ def main() -> None:
 
     no_k6 = args.plot_only or args.skip_k6
 
-    if not no_k6 and not LOAD_SWEEP.is_file():
-        sys.exit(f"Нет файла {LOAD_SWEEP}")
+    if not no_k6 and not LOAD_SCRIPT.is_file():
+        sys.exit(f"Нет файла {LOAD_SCRIPT}")
 
     env = {**os.environ}
     if args.base_url:
@@ -170,7 +170,7 @@ def main() -> None:
             f"DURATION={args.duration}",
             "--summary-export",
             str(out_json),
-            str(LOAD_SWEEP),
+            str(LOAD_SCRIPT),
         ]
         print(f"[k6] VU={vu} -> {out_json.name}", flush=True)
         r = subprocess.run(cmd, cwd=K6_DIR, env=env)
