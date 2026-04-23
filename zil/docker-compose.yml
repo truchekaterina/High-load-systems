@@ -1,5 +1,8 @@
-# LAB3: PostgreSQL + Spring Boot (образ app собирается в Dockerfile: Gradle bootJar внутри контейнера).
-# Из папки zil: docker compose up --build -d
+# LAB3: PostgreSQL + Spring Boot.
+# Сборка app в Docker по умолчанию: Dockerfile (Gradle bootJar внутри контейнера — долго, на Windows иногда падает демон: rpc Unavailable / EOF).
+# Быстрее и стабильнее: open-swagger.ps1 (bootJar на хосте + docker-compose.prebuilt.yml).
+# Из папки zil, полный стенд: docker compose up --build -d
+# LAB6 / Swagger: http://127.0.0.1:8083/swagger-ui/index.html
 # Только БД под IDE / bootRun: docker compose up -d postgres (localhost:5433).
 #
 # IntelliJ / хост: jdbc:postgresql://localhost:5433/car_rental

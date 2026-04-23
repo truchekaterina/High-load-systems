@@ -23,6 +23,9 @@ dependencies {
     // Основной стартер
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
+    // OpenAPI 3 + Swagger UI (https://springdoc.org/) — LAB6, проверка API в браузере
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
+
     // LAB2: Spring Data JPA + PostgreSQL
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'org.postgresql:postgresql'

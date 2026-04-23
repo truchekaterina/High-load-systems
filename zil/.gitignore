@@ -81,3 +81,6 @@ google-services.json
 # Локальное venv (matplotlib и т.д. в k6)
 .venv/
 venv/
+
+# Fat JAR для Dockerfile.prebuilt / open-swagger.ps1 (копируется из build/libs)
+docker-staging/app.jar

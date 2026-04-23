@@ -1,0 +1,8 @@
+# Тонкий образ: JAR собирается на хосте (gradlew bootJar), в Docker не качается Gradle — меньше нагрузка на Docker Desktop (см. docker-compose.prebuilt.yml).
+FROM eclipse-temurin:25-jre-alpine
+WORKDIR /app
+
+COPY docker-staging/app.jar app.jar
+
+EXPOSE 8083
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
