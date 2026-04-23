@@ -2,6 +2,10 @@
  * Тот же смысл, что load.js: два параллельных пула (POST и GET), но constant-vus — для графика avg vs VU.
  * TARGET_VUS — желаемая суммарная нагрузка; пополам делим между пулами (при нечётном — 1 VU в одном пуле больше).
  *
+ * Все точки + график одной командой (summary-*.json и PNG перезаписываются при каждом запуске):
+ *   python run_sweep_and_plot.py
+ *
+ * Одна точка вручную:
  *   k6 run -e TARGET_VUS=10 -e DURATION=45s --summary-export summary-10.json load-sweep.js
  */
 import http from 'k6/http';

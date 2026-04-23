@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""LAB4: график avg(http_req_duration) vs VU из нескольких summary k6. Зависимость: pip install matplotlib"""
+"""LAB4: график avg(http_req_duration) vs VU из нескольких summary k6. Зависимость: pip install matplotlib
+
+Полный цикл (несколько прогонов k6 + этот скрипт): см. run_sweep_and_plot.py
+"""
 
 import argparse
 import json
