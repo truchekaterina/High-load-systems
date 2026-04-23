@@ -2,6 +2,8 @@
 
 Документ для **новичка**: что сделать, **зачем** каждое действие, какими **простыми** средствами, и **как защищать** лабораторную (словом и через **Postman**).
 
+**Подробно «как устроен код» (максимально просто):** **[LAB5_EXPLAINED_RU.md](LAB5_EXPLAINED_RU.md)** — цепочка `clear → seed → k6`, порядок `DELETE` по FK, разбор `seed.py`.
+
 - **Порт API:** `8083` (как в LAB4 / `docker compose`).
 - **Бэкенд:** Spring Boot, PostgreSQL, Flyway (схема в `V1`, раньше — демо-INSERT в `V2` — по ТЗ данные оттуда **убираем**, заливаем из Python).
 - **Файл коллекции Postman (импорт):** `zil/documentation/postman_collection.json` (при отсутствии — ищите `postman_collection.json` в корне `zil`).

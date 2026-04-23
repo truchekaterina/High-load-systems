@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.RestController;
 import rental.service.DevDataService;
 
 /**
- * Только для dev / лаб: полная очистка таблиц перед заливкой тестовых данных.
+ * LAB5: HTTP-обёртка для сброса БД в учебном стенде.
+ * <p>
+ * Скрипт {@code seed.py} перед заливкой вызывает {@code POST /dev/clear}, чтобы не копить дубликаты
+ * (VIN, телефоны) и начинать с пустых таблиц. В production такие эндпоинты не оставляют без защиты.
  */
 @RestController
 public class DevController {
@@ -20,6 +23,11 @@ public class DevController {
         this.devDataService = devDataService;
     }
 
+    /**
+     * Полная очистка аренд, машин и клиентов. Порядок удаления в сервисе соответствует внешним ключам.
+     *
+     * @return пустое тело, статус {@link HttpStatus#NO_CONTENT} (204) при успехе
+     */
     @PostMapping("/dev/clear")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void clear() {

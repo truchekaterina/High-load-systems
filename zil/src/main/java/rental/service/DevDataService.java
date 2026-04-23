@@ -8,7 +8,10 @@ import rental.repository.ClientRepository;
 import rental.repository.RentRepository;
 
 /**
- * Служебные операции для учебы / dev (сброс данных). Не использовать в production API без защиты.
+ * LAB5: сброс всех бизнес-таблиц для сценария «очистка → заливка тестовых данных → нагрузка (k6)».
+ * <p>
+ * Сначала удаляем {@code rents}: строки ссылаются на {@code cars} и {@code clients}. Потом родительские
+ * таблицы — иначе СУБД вернёт ошибку нарушения внешнего ключа.
  */
 @Service
 public class DevDataService {
@@ -28,7 +31,7 @@ public class DevDataService {
     }
 
     /**
-     * Удаляет все строки: сначала аренды (FK на cars/clients), затем машины и клиенты.
+     * Удаляет все строки в одной транзакции: аренды → машины → клиенты.
      */
     @Transactional
     public void clearAllData() {

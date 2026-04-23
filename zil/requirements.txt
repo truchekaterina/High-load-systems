@@ -1,2 +1,3 @@
+# LAB5: HTTP-клиент и генерация тестовых строк (см. seed.py, zil/documentation/LAB5_EXPLAINED_RU.md)
 requests
 faker

@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 LAB5: заливка тестовых данных в REST API перед k6.
-Требования: requests, faker (см. requirements.txt).
-Порядок в жизни: поднять docker/app -> python seed.py -> k6 run ...
+
+Идея: приложение ничего не знает о Python — скрипт вызывает те же URL, что и Postman
+(POST /clients, /cars, /rents). Faker придумывает правдоподобный текст, числа/UUID
+остаются уникальными за счёт шаблонов.
+
+Требования: pip install -r requirements.txt  (requests, faker).
+
+Типичный порядок: поднять API + БД -> python seed.py -> k6 run load.js
+Подробный разбор: zil/documentation/LAB5_EXPLAINED_RU.md
 """
 
 from __future__ import annotations
@@ -30,6 +38,7 @@ def fail_response(r: requests.Response, context: str) -> None:
 
 
 def call_clear(base: str) -> None:
+    # LAB5: тот же сброс, что руками в Postman (POST /dev/clear) — пустые таблицы перед заливкой.
     r = requests.post(f"{base.rstrip('/')}/dev/clear", timeout=TIMEOUT)
     if r.status_code not in (200, 204):
         fail_response(r, "POST /dev/clear")
@@ -39,6 +48,7 @@ def call_clear(base: str) -> None:
 def post_ok(
     base: str, path: str, payload: dict[str, Any], context: str
 ) -> requests.Response:
+    # Ожидаем типичные коды Spring при создании сущности (200/201). Иначе — печать тела и выход 1.
     r = requests.post(
         f"{base.rstrip('/')}{path}", json=payload, timeout=TIMEOUT
     )
@@ -82,6 +92,7 @@ def seed_cars(base: str, count: int, fake: Faker) -> None:
 
 
 def seed_rents(base: str, count: int, fake: Faker) -> None:
+    # Аренда ссылается на car_id и client_id — сначала создаём "родителей" и сохраняем id из ответов JSON.
     car_ids: list[str] = []
     client_ids: list[str] = []
 
@@ -120,9 +131,9 @@ def seed_rents(base: str, count: int, fake: Faker) -> None:
         cid = random.choice(car_ids)
         clid = random.choice(client_ids)
         start = start0 + timedelta(days=(i % 200))
-        end = start + timedelta(days=random.randint(1, 14))
+        end = start + timedelta(days=random.randint(1, 14))  # end > start — проверка в БД/сущности
         days = (end - start).days
-        # грубая оценка стоимости
+        # Учебная оценка totalCost от длительности; не бизнес-логика сервиса.
         cost = float((Decimal(50) * Decimal(days)).quantize(Decimal("0.01")))
         body = {
             "carId": cid,
@@ -166,7 +177,7 @@ def main() -> None:
 
     base = args.base_url.rstrip("/")
     fake = Faker("ru_RU")
-    Faker.seed(42)
+    Faker.seed(42)  # Повторяемые "случайные" имена между запусками — удобно для демо/отчёта.
 
     try:
         if not args.no_clear:
