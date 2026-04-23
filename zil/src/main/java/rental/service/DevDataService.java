@@ -3,15 +3,16 @@ package rental.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import rental.ClearTarget;
 import rental.repository.CarRepository;
 import rental.repository.ClientRepository;
 import rental.repository.RentRepository;
 
 /**
- * LAB5: сброс всех бизнес-таблиц для сценария «очистка → заливка тестовых данных → нагрузка (k6)».
+ * LAB5: сброс бизнес-таблиц (полный или по сущности) с соблюдением внешних ключей.
  * <p>
- * Сначала удаляем {@code rents}: строки ссылаются на {@code cars} и {@code clients}. Потом родительские
- * таблицы — иначе СУБД вернёт ошибку нарушения внешнего ключа.
+ * Таблица {@code rents} ссылается на {@code cars} и {@code clients}, поэтому при удалении машин
+ * или клиентов сначала удаляются аренды.
  */
 @Service
 public class DevDataService {
@@ -31,12 +32,42 @@ public class DevDataService {
     }
 
     /**
-     * Удаляет все строки в одной транзакции: аренды → машины → клиенты.
+     * Полная очистка: аренды → машины → клиенты.
      */
     @Transactional
     public void clearAllData() {
-        rentRepository.deleteAll();
-        carRepository.deleteAll();
-        clientRepository.deleteAll();
+        clearByTarget(ClearTarget.ALL);
+    }
+
+    /**
+     * Очистка по режиму ТЗ: только часть таблиц, с каскадом только там, где нужен FK.
+     * <ul>
+     *   <li>{@code ALL} — как {@link #clearAllData()}</li>
+     *   <li>{@code RENTS} — только {@code rents}</li>
+     *   <li>{@code CARS} — {@code rents}, затем {@code cars}</li>
+     *   <li>{@code CLIENTS} — {@code rents}, затем {@code clients}</li>
+     * </ul>
+     */
+    @Transactional
+    public void clearByTarget(ClearTarget target) {
+        switch (target) {
+            case ALL -> {
+                // FK: rents → cars, rents → clients — сначала сносим ссылки, потом родители
+                rentRepository.deleteAll();
+                carRepository.deleteAll();
+                clientRepository.deleteAll();
+            }
+            case RENTS -> rentRepository.deleteAll();
+            case CARS -> {
+                // нельзя удалить car, пока на неё ссылается rent
+                rentRepository.deleteAll();
+                carRepository.deleteAll();
+            }
+            case CLIENTS -> {
+                // нельзя удалить client, пока на неё ссылается rent
+                rentRepository.deleteAll();
+                clientRepository.deleteAll();
+            }
+        }
     }
 }

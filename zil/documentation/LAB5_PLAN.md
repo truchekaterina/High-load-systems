@@ -4,6 +4,8 @@
 
 **Подробно «как устроен код» (максимально просто):** **[LAB5_EXPLAINED_RU.md](LAB5_EXPLAINED_RU.md)** — цепочка `clear → seed → k6`, порядок `DELETE` по FK, разбор `seed.py`.
 
+**Защита «с нуля» + разбор файлов строчка за смыслом (речь, Postman, что открывать):** **[LAB5_DEFENSE_AND_CODE_RU.md](LAB5_DEFENSE_AND_CODE_RU.md)**.
+
 - **Порт API:** `8083` (как в LAB4 / `docker compose`).
 - **Бэкенд:** Spring Boot, PostgreSQL, Flyway (схема в `V1`, раньше — демо-INSERT в `V2` — по ТЗ данные оттуда **убираем**, заливаем из Python).
 - **Файл коллекции Postman (импорт):** `zil/documentation/postman_collection.json` (при отсутствии — ищите `postman_collection.json` в корне `zil`).
@@ -46,10 +48,10 @@
 
 | Файл / место | Назначение |
 |--------------|------------|
-| `zil/seed.py` | Скрипт: `--count` (по умолчанию 500), `--endpoint` (`clients` \| `cars` \| `rents`), `--base-url` (по умолчанию `http://localhost:8083`), `--no-clear` (не вызывать очистку). Перед заливкой: `POST /dev/clear` (если не `--no-clear`). |
-| `zil/requirements.txt` | Строки `requests` и `faker` — чтобы преподаватель или вы сами восстановили зависимости: `pip install -r requirements.txt`. |
-| `zil/src/.../DevController.java` | `POST /dev/clear` → ответ **204 No Content** при успехе. |
-| `zil/src/.../DevDataService.java` | Порядок: `rents` → `cars` → `clients` через `deleteAll()` **в одной транзакции**. **Только для dev / учёбы** — на проде такой URL **не** открывают. |
+| `zil/seed.py` | `--count` (500), `--endpoint` (`clients` \| `cars` \| `rents`), `--base-url`, `--clear-target` (`all` \| `rents` \| `cars` \| `clients` — что передать в `POST /dev/clear?target=`), `--no-clear`, `--only-clear` (только очистка и выход). |
+| `zil/requirements.txt` | `requests` и `faker` — `pip install -r requirements.txt`. |
+| `zil/src/.../DevController.java` | `POST /dev/clear?target=all|rents|cars|clients` (по умолчанию `all`) → **204**; неизвестный `target` → **400**. |
+| `zil/src/.../DevDataService.java`, `ClearTarget.java` | Полная очистка или выборочная с учётом FK: например `cars` → сначала `rents`, потом `cars`. |
 | `zil/src/main/resources/db/migration/V2__seed_data.sql` | Пока может содержать **INSERT** — по ТЗ LAB5 **нужно убрать** демо-данные (см. раздел 7). |
 | k6 (LAB4) | После `seed` запускайте, например: `k6 run -e CREATE_SHARE=0.5 load.js` из папки `zil/k6`. |
 
@@ -93,10 +95,8 @@ docker compose up --build -d
 
 ### Шаг C. Проверить очистку (Postman **или** `curl.exe`)
 
-- **Postman:** метод **POST**, URL `http://localhost:8083/dev/clear`, **без** тела. Ожидаемый статус: **204 No Content** (в Postman внизу видно **Status**).
-- **PowerShell:** не используйте одну букву `curl` как в Linux — это псевдоним. Явно:  
-  `curl.exe -i -X POST http://localhost:8083/dev/clear`  
-  В ответе должна быть строка `HTTP/1.1 204`.
+- **Postman:** **POST** `http://localhost:8083/dev/clear` (опционально query: `?target=rents` и т.д.), **без** тела → **204**.
+- **curl:** `curl.exe -i -X POST "http://localhost:8083/dev/clear?target=all"` → `HTTP/1.1 204`.
 
 ### Шаг D. Залить данные
 
@@ -145,6 +145,8 @@ k6 run -e CREATE_SHARE=0.5 load.js
 
 ## 7. Как **защищать** LAB5 (сценарий на 5–10 минут)
 
+**Расширенный вариант** (тезисы на 30 сек, порядок демонстрации, Postman, ответы на вопросы, карта `ClearTarget` / `DevDataService` / `seed.py`) — в **[LAB5_DEFENSE_AND_CODE_RU.md](LAB5_DEFENSE_AND_CODE_RU.md)**. Ниже — краткая выжимка.
+
 ### 7.1. Что сказать в начале (тезисы)
 
 1. **Задача:** перед k6 **массово** и **воспроизводимо** наполнить БД **через API**, с **похожими на реальные** полями (**Faker**), без **жёсткого** SQL-сида при деплое.
@@ -154,10 +156,12 @@ k6 run -e CREATE_SHARE=0.5 load.js
 ### 7.2. Демонстрация экрана (логичный порядок)
 
 1. **Показать** `docker compose ps` (или в Docker Desktop) — **postgres** и **app** **running** / **healthy**.
-2. **Postman — очистка:** `POST http://localhost:8083/dev/clear` → **204**.
-3. **Postman — проверка пусто:** `GET http://localhost:8083/cars` и `GET http://localhost:8083/clients` → `[]` или пустые списки.
+2. **Postman — полная очистка:** `POST http://localhost:8083/dev/clear` (без `target` = то же, что `?target=all`) → **204**.  
+   **Выборочно** (для вопроса «порядок FK»): `POST .../dev/clear?target=rents` — только аренды; `?target=cars` — сначала аренды, потом машины; `?target=clients` — аренды, потом клиенты.
+3. **Postman — проверка пусто (или «что осталось»):** `GET /cars`, `/clients`, `/rents` — в зависимости от `target` списки пустые **или** частично полные.
 4. **Терминал — seed** (лучше **малое** `--count` для быстроты, например 5):  
-   `.\.venv\Scripts\python.exe seed.py --count 5 --endpoint clients`
+   `.\.venv\Scripts\python.exe seed.py --count 5 --endpoint clients`  
+   Только очистка без заливки: `... seed.py --only-clear --clear-target all`
 5. **Postman — снова список:** `GET http://localhost:8083/clients` — **пять** объектов, поля **не одинаковые** (Faker + уникальные `driverLicense` / телефоны по логике скрипта).
 6. (Опционально) **k6** один короткий прогон, чтобы показать связь «**данные есть** → **есть что грузить**».
 
@@ -165,7 +169,11 @@ k6 run -e CREATE_SHARE=0.5 load.js
 
 | # | Метод | URL | Body | Ожидаемый результат |
 |---|--------|-----|------|---------------------|
-| 1 | POST | `http://localhost:8083/dev/clear` | нет (None) | **204 No Content** |
+| 1 | POST | `http://localhost:8083/dev/clear` | нет (None) | **204** — полная очистка (`target` по умолчанию `all`) |
+| 1a | POST | `.../dev/clear?target=rents` | нет | **204** — только `rents` |
+| 1b | POST | `.../dev/clear?target=cars` | нет | **204** — `rents` + `cars` |
+| 1c | POST | `.../dev/clear?target=clients` | нет | **204** — `rents` + `clients` |
+| 1d | POST | `.../dev/clear?target=foo` | — | **400** — неверный `target` |
 | 2 | GET | `http://localhost:8083/cars` | — | **200**, JSON-массив |
 | 3 | GET | `http://localhost:8083/clients` | — | **200** |
 | 4 | GET | `http://localhost:8083/rents` | — | **200** |
@@ -179,7 +187,7 @@ k6 run -e CREATE_SHARE=0.5 load.js
 
 ### 7.4. Вопросы, которые часто задают (короткие ответы)
 
-- **Почему `delete` в порядке rents → cars → clients?** — Из-за **внешних ключей**: сначала убираем **ссылки** (аренды), потом **то**, на что ссылались.
+- **Почему `delete` в порядке rents → cars → clients (для `all`)?** — Из-за **внешних ключей**: сначала убираем **ссылки** (аренды), потом **то**, на что ссылались. Для `cars` / `clients` **часть** «родителей» оставляем — снимаем только **аренды** и **выбранную** сущность.
 - **Почему Faker, а не ручной список имён?** — **Масштаб** (500+ записей) и **разнообразие** полей **без** огромного файла.
 - **Почему убрали V2?** — Чтобы **не** путать **деплой** (схема) и **подготовку к тесту** (Python); объём теста **контролирует** флаг `--count`.
 - **Безопасен ли `/dev/clear`?** — Для **учебного** стенда да; **в бою** такие маршруты **не** публикуют **или** прячут за **профилем dev** и **авторизацией** (у нас по ТЗ **достаточно** честного комментария в коде).
@@ -191,7 +199,7 @@ k6 run -e CREATE_SHARE=0.5 load.js
 - [ ] В репозитории: `seed.py` + `requirements.txt` (`requests`, `faker`).
 - [ ] `--count` (по умолчанию 500), `--endpoint` с вариантами `clients` / `cars` / `rents`, при необходимости `--base-url` и `--no-clear`.
 - [ ] `requests` и `Faker` реально используются; для `rents` — **создание зависимостей** до аренд.
-- [ ] `POST /dev/clear` работает, порядок удаления **соблюдает FK**.
+- [ ] `POST /dev/clear` (и `?target=all|rents|cars|clients`) работает, порядок удаления **соблюдает FK**; `seed.py` умеет `--clear-target` / `--only-clear`.
 - [ ] `V2` **не** вставляет демо-данные (после правки); `V1` на месте.
 - [ ] В отчёте: команды **docker** → **seed** → **k6**; скрин или файл графика LAB4, если требуется сравнивать **до/после** наполнения.
 

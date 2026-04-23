@@ -9,8 +9,12 @@ LAB5: заливка тестовых данных в REST API перед k6.
 
 Требования: pip install -r requirements.txt  (requests, faker).
 
+Перед заливкой (если не --no-clear) вызывается POST /dev/clear?target=...
+(по умолчанию all). Флаги: --only-clear, --clear-target, см. --help.
+
 Типичный порядок: поднять API + БД -> python seed.py -> k6 run load.js
-Подробный разбор: zil/documentation/LAB5_EXPLAINED_RU.md
+
+Документация: zil/documentation/LAB5_EXPLAINED_RU.md, LAB5_DEFENSE_AND_CODE_RU.md
 """
 
 from __future__ import annotations
@@ -37,11 +41,14 @@ def fail_response(r: requests.Response, context: str) -> None:
         print(r.text[:2000], file=sys.stderr)
 
 
-def call_clear(base: str) -> None:
-    # LAB5: тот же сброс, что руками в Postman (POST /dev/clear) — пустые таблицы перед заливкой.
-    r = requests.post(f"{base.rstrip('/')}/dev/clear", timeout=TIMEOUT)
+def call_clear(base: str, target: str = "all") -> None:
+    # Должен совпадать с enum ClearTarget / @RequestParam target на Java-стороне
+    t = target.strip().lower()
+    r = requests.post(
+        f"{base.rstrip('/')}/dev/clear", params={"target": t}, timeout=TIMEOUT
+    )
     if r.status_code not in (200, 204):
-        fail_response(r, "POST /dev/clear")
+        fail_response(r, f"POST /dev/clear?target={t}")
         sys.exit(1)
 
 
@@ -147,6 +154,8 @@ def seed_rents(base: str, count: int, fake: Faker) -> None:
 
 
 def main() -> None:
+    # Разбор CLI: --endpoint выбирает, какой из трёх сидов вызвать; --count — объём;
+    # очистка управляется --no-clear / --only-clear / --clear-target.
     p = argparse.ArgumentParser(description="Заливка тестовых данных в Car Rental API")
     p.add_argument(
         "--count",
@@ -166,12 +175,23 @@ def main() -> None:
         help=f"база API (по умолчанию {DEFAULT_BASE})",
     )
     p.add_argument(
+        "--clear-target",
+        choices=("all", "rents", "cars", "clients"),
+        default="all",
+        help="какой режим POST /dev/clear?target=... перед заливкой (по умолчанию all = все таблицы)",
+    )
+    p.add_argument(
         "--no-clear",
         action="store_true",
         help="не вызывать POST /dev/clear перед заливкой",
     )
+    p.add_argument(
+        "--only-clear",
+        action="store_true",
+        help="только вызвать очистку с --clear-target и выйти (без --count / --endpoint)",
+    )
     args = p.parse_args()
-    if args.count < 1:
+    if not args.only_clear and args.count < 1:
         print("--count должен быть >= 1", file=sys.stderr)
         sys.exit(2)
 
@@ -180,14 +200,21 @@ def main() -> None:
     Faker.seed(42)  # Повторяемые "случайные" имена между запусками — удобно для демо/отчёта.
 
     try:
+        if args.only_clear:
+            # Режим «только сброс» (например перед ручной проверкой в Postman)
+            print(f"POST /dev/clear?target={args.clear_target} ...")
+            call_clear(base, args.clear_target)
+            return
         if not args.no_clear:
-            print("POST /dev/clear ...")
-            call_clear(base)
+            # Один HTTP-вызов к тому же бэку, что и вручную в Postman
+            print(f"POST /dev/clear?target={args.clear_target} ...")
+            call_clear(base, args.clear_target)
         if args.endpoint == "clients":
             seed_clients(base, args.count, fake)
         elif args.endpoint == "cars":
             seed_cars(base, args.count, fake)
         else:
+            # endpoint rents: внутри seed_rents сначала создаются client/car с id в ответе
             seed_rents(base, args.count, fake)
     except requests.RequestException as e:
         print(f"Сетевая ошибка: {e}", file=sys.stderr)
