@@ -29,34 +29,40 @@ const getReqDuration = new Trend('get_req_duration');
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8083';
 
-function isSweepMode() {
-  const v = __ENV.TARGET_VUS;
-  return v != null && String(v).trim() !== '';
+/** С sweep_plot.py / вручную: `-e TARGET_VUS=10` (и опционально `DURATION=45s`). */
+const targetVusFromEnv = String(__ENV.TARGET_VUS ?? '').trim();
+const runConstantVusForGraph = targetVusFromEnv.length > 0;
+
+/**
+ * constant-vu: ровно столько VU, сколько задано в TARGET_VUS (суммарно; пополам POST/GET).
+ */
+function createConstantVusOptions() {
+  const totalVus = Math.max(2, Number(targetVusFromEnv));
+  const vusForPostClients = Math.floor(totalVus / 2);
+  const vusForGetStats = totalVus - vusForPostClients;
+  const runDuration = __ENV.DURATION || '45s';
+  return {
+    scenarios: {
+      post_clients: {
+        executor: 'constant-vus',
+        vus: vusForPostClients,
+        duration: runDuration,
+        exec: 'postClients',
+      },
+      get_stats: {
+        executor: 'constant-vus',
+        vus: vusForGetStats,
+        duration: runDuration,
+        exec: 'getStats',
+      },
+    },
+  };
 }
 
-function buildOptions() {
-  if (isSweepMode()) {
-    const target = Math.max(2, Number(__ENV.TARGET_VUS));
-    const vusPost = Math.floor(target / 2);
-    const vusGet = target - vusPost;
-    const duration = __ENV.DURATION || '45s';
-    return {
-      scenarios: {
-        post_clients: {
-          executor: 'constant-vus',
-          vus: vusPost,
-          duration,
-          exec: 'postClients',
-        },
-        get_stats: {
-          executor: 'constant-vus',
-          vus: vusGet,
-          duration,
-          exec: 'getStats',
-        },
-      },
-    };
-  }
+/**
+ * Без TARGET_VUS: «ступенчатый» ramping (методичка), два параллельных сценария.
+ */
+function createRampingVusOptions() {
   return {
     scenarios: {
       post_clients: {
@@ -87,7 +93,9 @@ function buildOptions() {
   };
 }
 
-export const options = buildOptions();
+export const options = runConstantVusForGraph
+  ? createConstantVusOptions()
+  : createRampingVusOptions();
 
 export function postClients() {
   const headers = { 'Content-Type': 'application/json' };
