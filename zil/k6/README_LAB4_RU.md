@@ -1,112 +1,103 @@
-# LAB4 — k6 (Windows, PowerShell)
+# LAB4 — нагрузка k6 (максимально просто)
 
-Скрипты в **`zil\k6`**: один сценарий **`rental-mixed.js`** (два параллельных пула: `POST /clients` и `GET /stats`), свип точек VU — **`run-sweep.ps1`**, график **avg** по двум линиям — **`plot_avg_vs_vus.py`**.
+**Что тут задумано:** программа **k6** много раз дергает твой сервер, как будто к нему ходят «виртуальные пользователи» (VU). Мы смотрим, растёт ли задержка ответа, когда VU больше. Для зачёта ещё нужна **картинка-график** (её рисует **Python** внутри одного PowerShell-скрипта — отдельного `.py` файла в папке больше нет).
 
-API по умолчанию: `http://localhost:8083`. Подробный план по смыслу задания: **`zil/documentation/LAB4_PLAN.md`**.
+**Что лежит в `zil\k6` (всего два файла + папка с отчётами):**
 
----
+| Файл | Зачем |
+|------|--------|
+| `load.js` | Сценарий для k6: кто-то жмёт POST `/clients`, кто-то GET `/stats` |
+| `run-lab4.ps1` | Запускает k6 несколько раз с разным числом VU, потом строит `reports\avg_vs_vus.png` |
+| `reports\` | Сюда падают json с замерами и картинка. В git картинки и json обычно не кладут. |
 
-## 1. Что установить
-
-1. **k6** — в PowerShell, например:
-   - `winget install grafana.k6`, **или**
-   - установщик с [k6 — Installation](https://k6.io/docs/get-started/installation/) (Windows).
-2. **Python 3** + matplotlib для графика:
-   - `py -m pip install matplotlib`  
-   (или `python -m pip install matplotlib`, если в PATH только `python`).
-
-Проверка: `k6 version`, `py --version` или `python --version`.
+**Адрес API по умолчанию:** `http://localhost:8083`
 
 ---
 
-## 2. Поднять бэкенд
+## Шаг 1. Поставь софт (один раз)
 
-Из папки **`zil`** (Docker):
+1. **k6**  
+   В PowerShell можно так: `winget install grafana.k6`  
+   Либо скачай установщик с сайта k6. После установки **закрой и снова открой** терминал.  
+   Проверка: `k6 version` — что-то должно напечатать.
+
+2. **Python** (если ещё нет)  
+   С официального сайта python.org, галочка «add to PATH».  
+   Проверка: `py --version` или `python --version`
+
+3. **Библиотека для рисования графика**  
+   В PowerShell:  
+   `py -m pip install matplotlib`  
+   (если у тебя вызывается `python`, то `python -m pip install matplotlib`)
+
+---
+
+## Шаг 2. Запусти сервис (база + приложение)
+
+В папке `zil` (там, где `docker-compose.yml`):
 
 ```powershell
-cd <корень_репозитория>\zil
 docker compose up --build -d
 ```
 
-Проверка: `Invoke-RestMethod http://localhost:8083/cars` и `Invoke-RestMethod http://localhost:8083/stats`.
+Проверь, что открывается, например: `http://localhost:8083/cars` в браузере.
 
-Перед нагрузкой **не держите** второй экземпляр приложения на **8083** (например Run из IDE вместе с `zil-app` в compose).
+**Важно:** на порту 8083 не должны одновременно сидеть и Docker-приложение, и тот же сервер из IntelliJ. Один запуск — один процесс.
 
 ---
 
-## 3. Один прогон k6
-
-В **PowerShell**:
+## Шаг 3. Один прогон k6 (проверить, что вообще работает)
 
 ```powershell
 cd zil\k6
-k6 run rental-mixed.js
+k6 run load.js
 ```
 
-С **числом VU** и отчётом (метрики Trend: `k6_post_clients_ms`, `k6_get_stats_ms`):
+Если куча ошибок `connection refused` — сервис на 8083 не поднят.
+
+Записать отчёт в файл (число VU — 40, настраивается переменной):
 
 ```powershell
 $env:TARGET_VUS = "40"
-$env:POST_SHARE = "0.5"   # доля VU на POST, остальное на GET
-k6 run --summary-export reports\summary-vus-40.json rental-mixed.js
+k6 run --summary-export reports\summary-vus-40.json load.js
 ```
-
-Переменные можно задавать и через `-e`: `k6 run -e TARGET_VUS=40 -e POST_SHARE=0.5 --summary-export reports\summary-vus-40.json rental-mixed.js`.
 
 ---
 
-## 4. Серия точек + PNG (как у коллеги)
+## Шаг 4. Всё сразу: много прогонов + картинка
 
-Скрипт по умолчанию гоняет VU: **10, 20, 40, 80, 160**, пишет `reports\summary-vus-*.json`, затем строит **`reports\avg_vs_vus.png`**.
-
-```powershell
-cd zil\k6
-.\run-sweep.ps1
-```
-
-Опции через переменные среды:
-
-| Переменная | Назначение |
-|------------|------------|
-| `BASE_URL` | База API (по умолчанию `http://localhost:8083`) |
-| `POST_SHARE` | Доля VU на POST, `0..1` (по умолчанию `0.5`) |
-| `VUS_LIST` | Свои точки, через пробел, например `"5 10 20 40"` |
-| `NO_PLOT=1` | Только JSON, без вызова Python |
-| `NO_CLEAN=1` | Не удалять старые `summary-vus-*.json` и `avg_vs_vus.png` в `reports\` перед прогоном |
-
-Пример:
+Тот же `zil\k6`:
 
 ```powershell
-$env:VUS_LIST = "5 10 20 40 80"
-$env:BASE_URL = "http://localhost:8083"
-.\run-sweep.ps1
+.\run-lab4.ps1
 ```
 
-Только перерисовать график по уже снятым JSON:
+Скрипт по очереди гоняет k6 (по умолчанию VU: 10, 20, 40, 80, 160), кладёт json в `reports\`, в конце рисует **`reports\avg_vs_vus.png`**.
 
-```powershell
-cd zil\k6
-py plot_avg_vs_vus.py reports
-```
+**Если картинка не нужна** (только json):  
+`$env:NO_PLOT = "1"; .\run-lab4.ps1`
 
-(или `python plot_avg_vs_vus.py reports`.)
+**Свой набор VU** (через пробел):  
+`$env:VUS_LIST = "5 10 20 40"; .\run-lab4.ps1`
+
+**Не чистить старые отчёты в `reports` перед прогоном:**  
+`$env:NO_CLEAN = "1"; .\run-lab4.ps1`
+
+**Другой адрес API:**  
+`$env:BASE_URL = "http://127.0.0.1:8083"; .\run-lab4.ps1`
+
+**Доля нагрузки на POST (остальное на GET), от 0 до 1, по умолчанию 0.5 — пополам:**  
+`$env:POST_SHARE = "0.5"; .\run-lab4.ps1`
 
 ---
 
-## 5. Что лежит в репозитории
-
-- `rental-mixed.js` — сценарий k6 (ramping-vus, два сценария, Trend для графика).
-- `run-sweep.ps1` — цикл прогонов + вызов `plot_avg_vs_vus.py`.
-- `plot_avg_vs_vus.py` — две кривые (POST / GET) по `reports\summary-vus-<N>.json`.
-- `reports\.gitkeep` — чтобы папка `reports` существовала; сами JSON/PNG в git обычно не кладут (см. `k6/.gitignore`).
-
----
-
-## 6. Типичные проблемы
+## Частые вопросы
 
 | Симптом | Что сделать |
-|---------|-------------|
-| `k6` не найден | Установить k6, перезапустить терминал, проверить PATH. |
-| `connection refused` / 8083 | Поднять `docker compose`, проверить, что порт не занят другим процессом. |
-| Нет графика | Установить Python + `matplotlib`; при `NO_PLOT=1` график не строится. |
-| Старые точки в PNG | `NO_CLEAN=1` или вручную очистить `reports\` и снова `.\run-sweep.ps1`. |
+|--------|-------------|
+| `k6` не распознано | Поставь k6, перезапусти PowerShell, проверь `k6 version` |
+| нет `matplotlib` | `py -m pip install matplotlib` |
+| график не появился | Смотри сообщение в консоли; без Python скрипт только json сделает и предупредит |
+| порт 8083 занят | Останови лишний процесс на этом порту |
+
+Подробный план по смыслу задания: `zil\documentation\LAB4_PLAN.md`
