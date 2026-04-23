@@ -1,6 +1,9 @@
 /**
  * LAB4: два параллельных пула (POST /clients, GET /stats), без рандома.
  *
+ * Другой вариант сценария (как у коллеги: везде ramping + TARGET_VUS + POST_SHARE,
+ * summary в reports/summary-vus-*.json) — см. `rental-mixed.js` и `run-sweep.sh` / README_LAB4_RU.md.
+ *
  * Режим A — ramping-vus (методичка), по умолчанию:
  *   k6 run load.js
  *   k6 run --summary-export summary-ramping.json load.js
