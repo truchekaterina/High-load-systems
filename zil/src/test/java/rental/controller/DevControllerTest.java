@@ -52,7 +52,7 @@ class DevControllerTest {
     void clear_all_removes_everything() throws Exception {
         seedOneChain();
 
-        mvc.perform(post("/dev/clear").param("target", "all"))
+        mvc.perform(post("/dev/clear").param("clear", "all"))
                 .andExpect(status().isNoContent());
 
         assertThat(rentRepository.count()).isZero();
@@ -67,7 +67,7 @@ class DevControllerTest {
         long clientsBefore = clientRepository.count();
         assertThat(rentRepository.count()).isEqualTo(1L);
 
-        mvc.perform(post("/dev/clear").param("target", "rents"))
+        mvc.perform(post("/dev/clear").param("clear", "rents"))
                 .andExpect(status().isNoContent());
 
         assertThat(rentRepository.count()).isZero();
@@ -79,7 +79,7 @@ class DevControllerTest {
     void clear_cars_removes_rents_and_cars() throws Exception {
         seedOneChain();
 
-        mvc.perform(post("/dev/clear").param("target", "cars"))
+        mvc.perform(post("/dev/clear").param("clear", "cars"))
                 .andExpect(status().isNoContent());
 
         assertThat(rentRepository.count()).isZero();
@@ -91,7 +91,7 @@ class DevControllerTest {
     void clear_clients_removes_rents_and_clients() throws Exception {
         seedOneChain();
 
-        mvc.perform(post("/dev/clear").param("target", "clients"))
+        mvc.perform(post("/dev/clear").param("clear", "clients"))
                 .andExpect(status().isNoContent());
 
         assertThat(rentRepository.count()).isZero();
@@ -112,8 +112,8 @@ class DevControllerTest {
     }
 
     @Test
-    void clear_unknown_target_is_bad_request() throws Exception {
-        mvc.perform(post("/dev/clear").param("target", "nope"))
+    void clear_unknown_clear_param_is_bad_request() throws Exception {
+        mvc.perform(post("/dev/clear").param("clear", "nope"))
                 .andExpect(status().isBadRequest());
     }
 

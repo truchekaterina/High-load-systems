@@ -24,17 +24,17 @@
 |----------|-------------|
 | `seed.py` | «Это клиент: он только шлёт HTTP, приложению всё равно, Python это или Postman.» |
 | `requirements.txt` | «Два пакета: `requests` и `faker` — как в ТЗ.» |
-| `DevController.java` + `DevDataService.java` | «На бэке один POST `/dev/clear` с параметром `target` — либо всё сразу, либо только аренды, либо машины с «детьми-арендами», либо клиенты с арендами. Порядок delete соблюдает внешние ключи.» |
+| `DevController.java` + `DevDataService.java` | «На бэке один POST `/dev/clear` с query **`clear=`** — `all` стирает все три таблицы в правильном порядке; `rents` / `cars` / `clients` — частично, с каскадом по FK (см. [LAB5_EXPLAINED_RU.md](LAB5_EXPLAINED_RU.md), конспект про связи).» |
 
 ### Демонстрация с экрана (5–7 минут) — строгий порядок
 
 1. **Docker** (если сдаёте со стендом): `docker compose ps` — `postgres` healthy, `app` running. Если без Docker — скажите: «поднят Postgres и `gradlew bootRun`», и покажите в браузере `GET http://localhost:8083/cars`.
 
-2. **Полная очистка:** Postman или `curl.exe` — `POST http://localhost:8083/dev/clear` (без `target` = как `all`). Статус **204**. Покажите `GET /cars`, `/clients`, `/rents` — пустые массивы или `[]`.
+2. **Полная очистка:** Postman или `curl.exe` — `POST http://localhost:8083/dev/clear` (без `clear` = как `all`). Статус **204**. Покажите `GET /cars`, `/clients`, `/rents` — пустые массивы или `[]`.
 
 3. **Выборочная очистка (если спросили про ТЗ):**  
-   - `POST .../dev/clear?target=rents` — сняли только аренды, машины и люди остались.  
-   - Или: «Запустила `python seed.py --only-clear --clear-target clients` — чистятся аренды и клиенты, машины остаются.»
+   - `POST .../dev/clear?clear=rents` — сняли только аренды, машины и люди остались.  
+   - Или: «Запустила `python seed.py --only-clear --clear clients` — чистятся аренды и клиенты, машины остаются.»
 
 4. **Заливка:** в терминале из папки `zil` (с venv):
    ```text
@@ -51,12 +51,32 @@
 
 - «Схема таблиц — Flyway V1, данные для нагрузки — из Python, не из жёсткого SQL при старте.»  
 - «`@Transactional` на очистке — все delete в одной транзакции, либо всё откатится.»  
-- «Неправильный `target` в query — ответ 400, это обработано в `DevController`.»
+- «Неправильный `clear` в query — ответ 400, это обработано в `DevController`.»
 
 ### Чего не бояться
 
 - **204 No Content** без тела — это нормально для «успех, смотрите GET».  
 - В PowerShell **не** путать `curl` и `curl.exe` — в ТЗ-ответах лучше говорить «Postman Post» или `curl.exe`.
+
+---
+
+## Мини-конспект: как три таблицы связаны (для ответа «почему так delete»)
+
+В PostgreSQL (Flyway V1) **`rents`** — дочерняя: колонки **`car_id`** и **`client_id`** — внешние ключи на **`cars.id`** и **`clients.id`**. **Машина** и **клиент** друг на друга **не** ссылаются.
+
+```text
+          cars (id)              clients (id)
+            ↑                        ↑
+            │ car_id         client_id │
+            └────────── rents ─────────┘
+```
+
+- **`?clear=all`** — удаляем **сначала** все аренды, **потом** машины, **потом** клиентов (безопасный порядок при такой схеме).  
+- **`?clear=rents`** — только **аренды**; родители остаются.  
+- **`?clear=cars`** — **аренды** (мешают удалить машины) **+** **cars**; `clients` не трогаем.  
+- **`?clear=clients`** — **аренды** **+** **clients**; `cars` не трогаем.
+
+Полный разворот — [LAB5_EXPLAINED_RU.md](LAB5_EXPLAINED_RU.md) (тот же конспект крупнее).
 
 ---
 
@@ -66,7 +86,7 @@
 
 ### `rental/ClearTarget.java`
 
-- **Зачем:** в HTTP приходит **строка** `?target=clients`, в Java удобнее **enum** с фиксированным набором значений.  
+- **Зачем:** в HTTP приходит **строка** `?clear=clients` (имя **таблицы/сущности** + режим `all`), в Java — **enum**.  
 - **`fromQuery(String)`:** переводит `all` / `rents` / `cars` / `clients` в константы enum. Пустая строка или null → `ALL`. Любое другое слово → `IllegalArgumentException` → в контроллере превращается в **400**.
 
 ### `rental/service/DevDataService.java`
@@ -82,23 +102,23 @@
 
 ### `rental/controller/DevController.java`
 
-- **`@PostMapping("/dev/clear")`:** один URL, режим передаётся **query** `target=`.  
+- **`@PostMapping("/dev/clear")`:** один URL, режим — **query** `clear=` (см. `DevControllerTest`: `.param("clear", "rents")`).  
 - **`@ResponseStatus(HttpStatus.NO_CONTENT)`:** ответ 204.  
-- **`try/catch` + `ResponseStatusException`:** битая строка `target` → 400 с текстом ошибки, не 500.
+- **`try/catch` + `ResponseStatusException`:** битая строка `clear` → 400 с текстом ошибки, не 500.
 
 ### `rental/controller/DevControllerTest.java` (тесты)
 
-- Проверяет: полная очистка; три выборочных режима; вызов без `target` (как `all`); неверный `target` → 400.  
+- Проверяет: полная очистка; три выборочных режима; вызов без `clear` (как `all`); неверный `clear` → 400.  
 - **Фраза для препода:** «Интеграционные тесты на H2, как остальные контроллеры в проекте.»
 
 ### `zil/seed.py` — структура
 
 | Блок | Назначение |
 |------|------------|
-| `call_clear(base, target)` | Один `requests.post` на `/dev/clear` с `params={"target": ...}`. |
+| `call_clear(base, clear)` | Один `requests.post` на `/dev/clear` с `params={"clear": ...}`. |
 | `post_ok` | Обертка: если не 200/201 — печать тела в stderr, `exit(1)`. |
 | `seed_clients` / `seed_cars` / `seed_rents` | Три сценария ТЗ. Для `rents` — два цикла на родителей, один на аренды. |
-| `main` | `argparse`: `--count`, `--endpoint`, `--base-url`, `--clear-target`, `--no-clear`, `--only-clear`. Сначала при необходимости clear, потом ветка по `endpoint`. |
+| `main` | `argparse`: `--count`, `--endpoint`, `--base-url`, **`--clear`**, `--no-clear`, `--only-clear`. Сначала при необходимости clear, потом ветка по `endpoint`. |
 | `Faker("ru_RU")` + `Faker.seed(42)` | Русскоязычные фейки и **повторяемость** для демо. |
 
 ### `requirements.txt`
@@ -107,7 +127,7 @@
 
 ### Связь с `V2__seed_data.sql` (честно на защите)
 
-- Если в V2 **есть** INSERT: при **первом** деплое Flyway вставит демо-строки. После `POST /dev/clear?target=all` скрипт заливает **свои** данные.  
+- Если в V2 **есть** INSERT: при **первом** деплое Flyway вставит демо-строки. После `POST /dev/clear?clear=all` скрипт заливает **свои** данные.  
 - Если по ТЗ курса нужно **убрать** демо-INSERT из V2: отредактировать файл, для чистой БД сделать `docker compose down -v` и снова поднять, чтобы миграции накатились заново.
 
 ---
