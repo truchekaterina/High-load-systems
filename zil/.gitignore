@@ -77,3 +77,7 @@ google-services.json
 
 # Опционально: личный черновик плана (раскомментируйте, если не хотите вести файл в git)
 # LAB2_PLAN.md
+
+# Локальное venv (matplotlib и т.д. в k6)
+.venv/
+venv/

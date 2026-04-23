@@ -1,4 +1,4 @@
-# LAB4: серия прогонов k6 (Windows) — аналог run-sweep.sh
+# LAB4: серия прогонов k6 (Windows / PowerShell)
 # Точки VU: по умолчанию 10 20 40 80 160; JSON в k6\reports\
 #
 # Примеры:
@@ -28,7 +28,7 @@ if ($env:NO_CLEAN -ne "1") {
 
 $k6 = Get-Command k6 -ErrorAction SilentlyContinue
 if (-not $k6) {
-  Write-Error "k6 не найден в PATH. Установите: https://k6.io/docs/get-started/installation/ или используйте Git Bash + run-sweep.sh с USE_DOCKER_K6=1"
+  Write-Error "k6 не найден в PATH. Установите: winget install grafana.k6 либо MSI с https://k6.io/docs/get-started/installation/ — и перезапустите терминал."
   exit 1
 }
 

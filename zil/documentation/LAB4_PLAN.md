@@ -1,16 +1,16 @@
-# LAB4 — k6: пошагово под ваше ТЗ (проект `zil`)
+# LAB4 — k6: пошагово под ТЗ (проект `zil`, Windows)
 
-Файл плана: **`zil/documentation/LAB4_PLAN.md`**. Скрипты нагрузки: **`zil/k6/`**.
+Файл плана: **`zil/documentation/LAB4_PLAN.md`**. Скрипты нагрузки: **`zil/k6/`** (основной сценарий — **`rental-mixed.js`**, свип — **`run-sweep.ps1`**, график — **`plot_avg_vs_vus.py`**).
 
-Порт API: **8083**. Установка k6: [https://k6.io/docs/get-started/installation/](https://k6.io/docs/get-started/installation/)
+Порт API: **8083**. Установка k6: [k6 — Installation](https://k6.io/docs/get-started/installation/) (Windows: winget, MSI с сайта и т.д.).
 
 ---
 
 ## Смысл лабы
 
-**k6** многократно вызывает ваш REST API с разным числом виртуальных пользователей (**VU**). Вы смотрите, как меняется **среднее время ответа** и строите **график avg от VU** (несколько точек, удобно удваивать нагрузку: 5 → 10 → 20 → 40 → 80).
+**k6** многократно вызывает REST API с разным числом виртуальных пользователей (**VU**). Смотрите, как меняется **среднее время ответа**, и строите **график avg от VU** (несколько точек, удобно удваивать: 10 → 20 → 40 → 80 → 160).
 
-В репозиторий по ТЗ кладёте **один JS-профиль** (`load.js`: ramping **или** constant-vu через `TARGET_VUS`) и **генератор графика** (`sweep_plot.py`: прогон точек + PNG с **двумя линиями** — POST и GET). Сам k6 график не рисует — только сохраняет метрики в JSON (`--summary-export`).
+В репозиторий кладёте **один JS-профиль** — **`rental-mixed.js`** (два параллельных `ramping-vus`-сценария, Trend `k6_post_clients_ms` / `k6_get_stats_ms`) — и **генератор графика** — **`plot_avg_vs_vus.py`**. Серию прогонов с разными `TARGET_VUS` удобно запускать из **`run-sweep.ps1`**. Сам k6 график не рисует — метрики сохраняются в JSON (`--summary-export`).
 
 ---
 
@@ -18,16 +18,15 @@
 
 | Требование | Как закрываем |
 |------------|----------------|
-| Развернуть k6 | `k6 version` в терминале |
-| Простейшее получение данных одной таблицы | **`GET /cars`** (или `/clients`) — добавите в сценарий на шаге 3 |
-| `executor: 'ramping-vus'`, `k6/http` | Только в **`load.js`** |
-| POST одной «простой» сущности (без ссылок) | Сейчас: **`POST /clients`** |
-| GET «дополнительно», статистика | **`GET /stats`** в бэкенде (`StatsController`) — добавите вызов в k6 на шаге 2 |
-| Пропорция **50/50** | Два **параллельных** сценария k6: одни VU только `POST /clients`, другие только `GET /stats` (см. шаг 2) |
-| График **avg** от **VU**, **4–5 точек**, удвоение, **две линии** (POST / GET) | **`load.js`** с `-e TARGET_VUS=…` (Trend) + **`sweep_plot.py`** |
-| Git: js-конфиг + генератор графика | `load.js`, `sweep_plot.py` |
-
-«Киносеанс, пользователь…» в задании — примеры; у нас аналог простой сущности — **клиент** (`/clients`).
+| Развернуть k6 | `k6 version` в PowerShell |
+| Простейшее получение данных одной таблицы | Можно добавить в сценарий **`GET /cars`** (см. шаг 3) |
+| `executor: 'ramping-vus'`, `k6/http` | В **`rental-mixed.js`** (оба сценария) |
+| POST «простой» сущности | **`POST /clients`** |
+| GET статистики | **`GET /stats`** (`StatsController`) |
+| Пропорция **50/50** | `POST_SHARE=0.5` — два пула, POST и GET (см. `rental-mixed.js`) |
+| График **avg** от **VU**, **4–5 точек**, **две линии** (POST / GET) | **`run-sweep.ps1`** + **`plot_avg_vs_vus.py`** (читает `reports/summary-vus-*.json`) |
+| Git: js-конфиг + генератор графика | `rental-mixed.js`, `plot_avg_vs_vus.py` |
+| Windows | **`run-sweep.ps1`**, команды в PowerShell |
 
 ---
 
@@ -36,105 +35,87 @@
 Из папки **`zil`**:
 
 ```text
+cd zil
 docker compose up --build -d
 ```
 
-Проверка: `http://localhost:8083/cars` открывается. Для шагов со статистикой: `http://localhost:8083/stats` (если в проекте есть `StatsController`).
+Проверка: `http://localhost:8083/cars`, при необходимости `http://localhost:8083/stats`.
 
 ---
 
-## Шаг 1. Сценарий в репозитории: один `load.js`, два режима
+## Шаг 1. Сценарий: `rental-mixed.js`
 
-Файл **`zil/k6/load.js`**:
+Файл **`zil/k6/rental-mixed.js`**:
 
-- по умолчанию (без `TARGET_VUS`) — **`ramping-vus`**, два параллельных сценария POST/GET, метрики **Trend** `post_req_duration` / `get_req_duration`;
-- с **`-e TARGET_VUS=…`** — **`constant-vus`** (режим точек графика).
-
-Запуск (методичка, ramping):
-
-```text
-cd zil\k6
-k6 run load.js
-```
-
-Опционально сохранить сводку:
-
-```text
-k6 run --summary-export summary-ramping.json load.js
-```
-
----
-
-## Шаг 2. GET статистики + пропорция 50/50 (два пула, без рандома)
-
-Смысл: **две группы** виртуальных пользователей работают **одновременно** — у одной только `POST /clients`, у другой только `GET /stats`. В сумме нагрузка **~50/50** (в `load.js` на первом «плато» 3+2=5, дальше 5+5=10, 10+10=20).
-
-В **`load.js`**: в `options` два **сценария** (`scenarios: { post_clients: …, get_stats: … }`), у каждого:
-
-- `executor: 'ramping-vus'`;
-- `exec: 'postClients'` или `exec: 'getStats'`;
-- `stages` с **своим** `target` (суммарно нужное число VU, пополам).
-
-В коде — две **именованные** функции `export function postClients()` и `export function getStats()` (см. текущий `load.js`).
+- всегда **`ramping-vus`**, два сценария: **`postClients`** (POST `/clients`) и **`getStats`** (GET `/stats`);
+- пик VU в каждом сценарии задаётся из **`TARGET_VUS`** и **`POST_SHARE`** (суммарно `TARGET_VUS`, разбиение на целочисленные пулы);
+- Trend-метрики: **`k6_post_clients_ms`**, **`k6_get_stats_ms`** (используются в **`plot_avg_vs_vus.py`**).
 
 Запуск:
 
 ```text
-k6 run load.js
+cd zil\k6
+k6 run rental-mixed.js
 ```
 
-Режим **constant-vu** (график): `k6 run -e TARGET_VUS=10 -e DURATION=45s load.js` — те же `exec`, `TARGET_VUS` **суммарно**, пополам по пулам.
+Сохранение сводки (пример):
+
+```text
+$env:TARGET_VUS = "40"
+k6 run --summary-export reports\summary-vus-40.json rental-mixed.js
+```
 
 ---
 
-## Шаг 3. Простейшее чтение таблицы
+## Шаг 2. Пропорция 50/50 (два пула)
 
-В конец каждой итерации (после POST или GET `/stats`) добавьте, например:
+**Две группы** VU работают **параллельно** — первая только `POST /clients`, вторая только `GET /stats`. Пропорция задаётся **`POST_SHARE`** (по умолчанию `0.5` ≈ 50/50). Подробности — в комментариях в **`rental-mixed.js`**.
+
+---
+
+## Шаг 3. Простейшее чтение таблицы (опционально)
+
+В тело итерации можно добавить, например:
 
 ```javascript
-http.get(`${BASE_URL}/cars`, { tags: { endpoint: 'list_cars' } });
+http.get(`${baseUrl}/cars`, { tags: { endpoint: 'list_cars' } });
 ```
 
-и `check` на статус 200. Так вы явно нагружаете **получение данных одной таблицы**.
-
-Правки делаются в **одном** `load.js` (и для ramping, и для `TARGET_VUS`).
+и `check` на 200. Правки — в **`rental-mixed.js`**.
 
 ---
 
-## Шаг 4. График avg vs VU (4–5 точек)
+## Шаг 4. График avg vs VU (несколько точек)
 
-1. В **`load.js`** с **`-e TARGET_VUS=…`** включается **`constant-vus`**; длительность — **`DURATION`**.
+1. Поставьте **Python** и **`matplotlib`**: `py -m pip install matplotlib` (или `python -m pip`).
 
-2. Из **`zil/k6`** несколько прогонов (пример для 5, 10, 20, 40, 80):
-
-   ```text
-   k6 run -e TARGET_VUS=5 -e DURATION=45s --summary-export summary-5.json load.js
-   k6 run -e TARGET_VUS=10 -e DURATION=45s --summary-export summary-10.json load.js
-   k6 run -e TARGET_VUS=20 -e DURATION=45s --summary-export summary-20.json load.js
-   k6 run -e TARGET_VUS=40 -e DURATION=45s --summary-export summary-40.json load.js
-   k6 run -e TARGET_VUS=80 -e DURATION=45s --summary-export summary-80.json load.js
-   ```
-
-3. Установите **matplotlib** и за один раз прогнать точки + график (две кривые: POST, GET):
+2. Из **`zil\k6`** в PowerShell:
 
    ```text
-   pip install matplotlib
-   python sweep_plot.py
+   .\run-sweep.ps1
    ```
 
-   Либо вручную: те же `k6 run`, затем `python sweep_plot.py --plot-only` (после ручного прогона).
+   По умолчанию точки VU: 10, 20, 40, 80, 160; JSON — **`reports\summary-vus-<N>.json`**, график — **`reports\avg_vs_vus.png`**.
 
-Файлы **`summary-*.json`** в `.gitignore` папки `k6` — в git обычно не коммитят; в отчёт приложите **`avg_vs_vus.png`** и опишите оси.
+3. Вручную: несколько вызовов `k6 run` с разными `TARGET_VUS` и `--summary-export`, затем:
+
+   ```text
+   py plot_avg_vs_vus.py reports
+   ```
+
+Файлы в **`reports/`** и **`summary*.json`** в корне k6 в `.gitignore` — в git обычно не коммитят; в отчёт приложите **`avg_vs_vus.png`**.
 
 ---
 
 ## Шаг 5. Что коммитить в git
 
-- `zil/k6/load.js` — **ramping-vus** (по умолчанию) и **constant-vus** (с `-e TARGET_VUS=…`) в одном файле  
-- `zil/k6/sweep_plot.py` — прогон k6-точек + генератор графика (две линии POST/GET)  
-- по желанию: `zil/k6/.gitignore`  
-- этот файл: `zil/documentation/LAB4_PLAN.md`  
-- бэкенд **`GET /stats`**, если добавляли под лабу: `zil/src/main/java/rental/controller/StatsController.java`
+- **`zil/k6/rental-mixed.js`**
+- **`zil/k6/plot_avg_vs_vus.py`**
+- **`zil/k6/run-sweep.ps1`**
+- **`zil/k6/README_LAB4_RU.md`**
+- **`zil/k6/.gitkeep`** в `reports/` (по желанию) и **`zil/k6/.gitignore`**
+- **`zil/documentation/LAB4_PLAN.md`**
+- бэкенд **`GET /stats`**, если добавляли: **`zil/src/main/java/rental/controller/StatsController.java`**
 
 ---
 
@@ -142,15 +123,16 @@ http.get(`${BASE_URL}/cars`, { tags: { endpoint: 'list_cars' } });
 
 | Симптом | Действие |
 |---------|----------|
-| `connection refused` на 8083 | Не запущен Docker / приложение |
-| Логика POST/GET разъехалась | Меняется **один** `load.js` |
-| `sweep_plot.py` падает | `pip install matplotlib`; старые `summary-*.json` без Trend — пересоберите: `k6 run -e TARGET_VUS=… load.js` |
+| `connection refused` на 8083 | Не запущен Docker / приложение; освободить порт |
+| Логика POST/GET | Правки в **`rental-mixed.js`**, `POST_SHARE` |
+| `plot_avg_vs_vus.py` падает | `pip install matplotlib`; пересоберите JSON свежим **`k6 run`**, чтобы в summary были Trend-метрики |
+| k6 не в PATH | Установка k6, перезапуск терминала |
 
 ---
 
 ## Ссылки
 
-- [k6 docs](https://k6.io/docs/)  
-- [ramping-vus](https://k6.io/docs/using-k6/scenarios/executors/#ramping-vus)  
-- [HTTP requests](https://k6.io/docs/using-k6/http-requests/)  
+- [k6 docs](https://k6.io/docs/)
+- [ramping-vus](https://k6.io/docs/using-k6/scenarios/executors/#ramping-vus)
+- [HTTP requests](https://k6.io/docs/using-k6/http-requests/)
 - [JSON summary](https://k6.io/docs/results-output/end-of-test/json-summary/)
