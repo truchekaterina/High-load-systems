@@ -14,7 +14,7 @@
 
 // Стандартный модуль k6 для HTTP-запросов.
 import http from 'k6/http';
-// check — мини-assert: прошёл ли запрос (например status === 200). sleep — пауза между итерациями.
+// check — мини-assert: прошёл ли запрос (GET обычно 200; POST на создание — 200 или 201). sleep — пауза между итерациями.
 import { check, sleep } from 'k6';
 // Trend — кастомная метрика: мы сами кладём туда длительность в миллисекундах.
 import { Trend } from 'k6/metrics';
@@ -105,7 +105,8 @@ export function doPost() {
   // res.timings.duration — длительность в ms; кладём в Trend для avg в отчёте.
   timePost.add(res.timings.duration);
   // check не роняет VU, только помечает passed/failed в summary.
-  check(res, { ok: (r) => r.status === 200 });
+  // 201 Created — типичный ответ Spring на POST; 200 тоже допустим — оба считаем успехом (иначе растёт http_req_failed).
+  check(res, { ok: (r) => r.status === 200 || r.status === 201 });
   // Небольшая пауза, иначе все VU долбят с нулевой задержкой (нереалистично и может забить CPU).
   sleep(0.05);
 }

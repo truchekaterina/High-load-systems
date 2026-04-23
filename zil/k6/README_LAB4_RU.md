@@ -42,8 +42,8 @@
    - `only_post` → функция `doPost`;
    - `only_get` → `doGet`.
    У каждого свой `stages: upDown(vuForPost)` или `upDown(vuForGet)`.
-7. **`thresholds`** — если доля **неуспешных** HTTP (`http_req_failed`) ≥ 15%, k6 завершится с **ошибкой** (код не 0), чтобы это было видно в скрипте.
-8. **`doPost`**: собирает JSON с уникальным `driverLicense` (через `randomUuid()`), `http.post` на `/clients`, пишет длительность в `timePost`, `check` на статус 200, `sleep(0.05)`.
+7. **`thresholds`** — если доля **неуспешных** HTTP (`http_req_failed`, в основном 4xx/5xx и сетевые сбои) ≥ 15%, k6 завершится с **ошибкой** (код не 0), чтобы это было видно в скрипте.
+8. **`doPost`**: собирает JSON с уникальным `driverLicense` (через `randomUuid()`), `http.post` на `/clients`, пишет длительность в `timePost`, `check` на статус **200 или 201** (Spring часто отдаёт 201 на создание), `sleep(0.05)`.
 9. **`doGet`**: `http.get` на `/stats`, длительность в `timeGet`, проверка 200, пауза.
 
 **Важно:** имя кастомной метрики (`post_ms` / `get_ms`) **должно совпадать** с тем, что читает Python в `summary-vus-*.json` — иначе график не построится.
