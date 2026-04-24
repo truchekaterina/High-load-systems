@@ -82,5 +82,5 @@ google-services.json
 .venv/
 venv/
 
-# Fat JAR для Dockerfile.prebuilt / open-swagger.ps1 (копируется из build/libs)
-docker-staging/app.jar
+# Старая папка под локальный JAR (не используется; не коммитить случайные jar)
+docker-staging/

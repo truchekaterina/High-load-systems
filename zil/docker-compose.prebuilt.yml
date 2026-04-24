@@ -1,7 +1,0 @@
-# Подключать вместе с docker-compose.yml:
-#   docker compose -f docker-compose.yml -f docker-compose.prebuilt.yml up --build -d
-# Скрипт open-swagger.ps1 делает bootJar на Windows и собирает образ из Dockerfile.prebuilt (без Gradle внутри Docker).
-services:
-  app:
-    build:
-      dockerfile: Dockerfile.prebuilt

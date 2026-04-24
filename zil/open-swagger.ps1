@@ -1,30 +1,12 @@
-# Swagger: поднять postgres + app и открыть UI в браузере.
-# По умолчанию: bootJar на Windows + тонкий Docker-образ (без Gradle в контейнере) — стабильнее при обрывах Docker (rpc EOF).
-# Полная сборка в Docker (долго):  docker compose up --build -d
-#
+# Поднять postgres + app (сборка JAR в Docker по zil/Dockerfile) и открыть Swagger в браузере.
+# Первая сборка может идти несколько минут (Gradle внутри образа). При обрыве демона Docker — перезапустите Docker Desktop и повторите.
 # Запуск:  cd zil  ;  .\open-swagger.ps1
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-Write-Host "Gradle: bootJar (fat JAR на хосте)..." -ForegroundColor Cyan
-.\gradlew.bat bootJar -x test --no-daemon
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-$bootJar = Get-ChildItem -Path "build\libs" -Filter "*.jar" -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -notmatch '-plain\.jar$' } |
-    Select-Object -First 1
-if (-not $bootJar) {
-    Write-Error "Не найден fat JAR в build\libs (нужен bootJar без -plain)."
-    exit 1
-}
-
-New-Item -ItemType Directory -Force -Path "docker-staging" | Out-Null
-Copy-Item -Path $bootJar.FullName -Destination "docker-staging\app.jar" -Force
-Write-Host "Copied: $($bootJar.Name) -> docker-staging\app.jar" -ForegroundColor Cyan
-
-Write-Host "docker compose (postgres + app, Dockerfile.prebuilt)..." -ForegroundColor Cyan
-docker compose -f docker-compose.yml -f docker-compose.prebuilt.yml up --build -d
+Write-Host "docker compose up --build -d (postgres + app)..." -ForegroundColor Cyan
+docker compose up --build -d
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Waiting for http://127.0.0.1:8083/cars (up to 90s)..." -ForegroundColor Cyan

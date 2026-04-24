@@ -6,7 +6,7 @@
 
 | Файл | Зачем |
 |------|--------|
-| `load.js` | Сценарий для k6: кто-то жмёт POST `/clients`, кто-то GET `/stats` |
+| `load.js` | Сценарий k6: POST `/clients` + GET `/stats`. **LAB4 по умолчанию** — ramping-vus (см. `run-lab4.ps1`). **LAB6** — в том же файле: `LAB6_CONST=1`, плюс `TARGET_VUS`, `POST_SHARE`, `DURATION` (см. комментарий в начале `load.js`) |
 | `run-lab4.ps1` | Запускает k6 несколько раз с разным числом VU, затем вызывает `plot_k6_reports.py` |
 | `plot_k6_reports.py` | Читает `reports\summary-vus-*.json`, рисует `reports\avg_vs_vus.png` (нужен `matplotlib`) |
 | `reports\` | Сюда падают json с замерами и картинка. В git картинки и json обычно не кладут. |

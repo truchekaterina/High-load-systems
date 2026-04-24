@@ -1,9 +1,0 @@
-.git
-.gradle
-build
-out
-.idea
-*.iml
-
-# Старый способ со staging на хосте; в контекст не нужен
-docker

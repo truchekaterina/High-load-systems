@@ -1,12 +1,17 @@
-# LAB3: PostgreSQL + Spring Boot.
-# Сборка app в Docker по умолчанию: Dockerfile (Gradle bootJar внутри контейнера — долго, на Windows иногда падает демон: rpc Unavailable / EOF).
-# Быстрее и стабильнее: open-swagger.ps1 (bootJar на хосте + docker-compose.prebuilt.yml).
-# Из папки zil, полный стенд: docker compose up --build -d
+# LAB3: PostgreSQL + Spring Boot. Сборка app: zil/Dockerfile (bootJar внутри контейнера).
+# Из папки zil: docker compose up --build -d  (или open-swagger.ps1 / open-swagger.cmd)
 # LAB6 / Swagger: http://127.0.0.1:8083/swagger-ui/index.html
 # Только БД под IDE / bootRun: docker compose up -d postgres (localhost:5433).
 #
 # IntelliJ / хост: jdbc:postgresql://localhost:5433/car_rental
 # Контейнер app:  jdbc:postgresql://postgres:5432/car_rental
+#
+# LAB6: лимиты CPU/RAM и смесь нагрузки меняй через env на хосте перед up:
+#   export APP_CPUS=0.5
+#   export APP_MEM=768m
+#   docker compose up -d --force-recreate --no-deps app
+# Проверка: docker inspect zil-app --format '{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}'
+# 0.5 CPU -> 500000000 наносек, 1.0 -> 1000000000, 1.5 -> 1500000000, 2.0 -> 2000000000
 
 services:
   postgres:
@@ -38,8 +43,16 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/car_rental
       SPRING_DATASOURCE_USERNAME: rental
       SPRING_DATASOURCE_PASSWORD: rental_pass
+      SPRING_JPA_SHOW_SQL: "false"
+      SERVER_TOMCAT_MAX_THREADS: "50"
     ports:
       - "8083:8083"
+    # Лимиты: через deploy (совместимо с docker compose v2+ на Linux; подставляется из env хоста)
+    deploy:
+      resources:
+        limits:
+          cpus: "${APP_CPUS:-1.0}"
+          memory: "${APP_MEM:-768m}"
 
 volumes:
   zil_pgdata:
