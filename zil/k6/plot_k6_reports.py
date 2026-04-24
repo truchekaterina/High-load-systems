@@ -1,16 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-LAB4: строит график средней задержки (POST /clients и GET /stats) по отчётам k6.
+k6: графики по summary JSON (экспорт --summary-trend-stats / стандартный summary).
 
-Откуда брать json:
-  Переменная окружения K6_REPORTS_DIR — папка с файлами summary-vus-10.json, summary-vus-20.json, …
-  Если не задана, используется подпапка ``reports`` рядом с этим скриптом (удобно запускать вручную из zil\\k6).
+LAB4 (по умолчанию)
+  K6_REPORTS_DIR — папка с summary-vus-10.json, summary-vus-20.json, …
+  (если нет: ./reports рядом со скриптом). Ось X: TARGET_VUS. Кривые: post_ms, get_ms.
+  Файл: reports/avg_vs_vus.png
+
+LAB6
+  Команда:  py plot_k6_reports.py --lab6
+  Каталог:  K6_LAB6_DIR или ./reports-lab6-pc рядом со скриптом.
+  Имена:    *cpu<NN>_mix<MM>.json, например pc_cpu10_mix50.json
+            cpu05 → 0.5, cpu10 → 1.0, …; mix05 / mix50 / mix95 — три сценария POST/GET.
+  Файлы:    четыре графика — по одному на фиксированный CPU (0.5, 1.0, 1.5, 2.0):
+            lab6_cpu_0.5_mixed.png … lab6_cpu_2.0_mixed.png
+            На каждом: по оси X три смеси; две линии (avg, p(95)) с точками, без столбцов.
 
 Зависимости: pip install matplotlib
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
@@ -47,10 +58,163 @@ def get_avg(m: dict | None) -> float | None:
     return None
 
 
+def get_p95(m: dict | None) -> float | None:
+    """p(95) из summary k6: ``values`` или корень, ключ ``p(95)``."""
+    if not m:
+        return None
+    val = m.get("values")
+    if isinstance(val, dict) and val.get("p(95)") is not None:
+        return float(val["p(95)"])
+    if m.get("p(95)") is not None:
+        return float(m["p(95)"])
+    return None
+
+
+# cpu05|cpu10|… -> 0.5, 1.0, …; mix05|50|95 -> подписи смеси POST/GET
+_LAB6_NAME = re.compile(r"cpu(\d+)_mix(\d+)\.json$", re.IGNORECASE)
+MIX_LABELS: dict[str, str] = {
+    "05": "5% POST / 95% GET",
+    "50": "50% / 50%",
+    "95": "95% POST / 5% GET",
+}
+MIX_TICK: dict[str, str] = {
+    "05": "5/95",
+    "50": "50/50",
+    "95": "95/5",
+}
+CPU_STEPS: tuple[float, ...] = (0.5, 1.0, 1.5, 2.0)
+
+
+def cpu_code_to_float(c: str) -> float:
+    """05→0.5, 10→1.0, 15→1.5, 20→2.0 (как в именах pc_cpu10_…)."""
+    return int(c, 10) / 10.0
+
+
+def plot_lab6(root: Path) -> None:
+    files = list(root.glob("*.json"))
+    by_cpu: dict[float, dict[str, tuple[float, float]]] = {}
+    for f in files:
+        m = _LAB6_NAME.search(f.name)
+        if not m:
+            continue
+        cpu_key, mix_key = m.group(1), m.group(2)
+        if mix_key not in ("05", "50", "95"):
+            continue
+        data = json.loads(f.read_text(encoding="utf-8"))
+        met = data.get("metrics") or {}
+        h = met.get("http_req_duration")
+        if not h:
+            h = met.get("http_req_duration{expected_response:true}")
+        if not h:
+            print("Нет http_req_duration в", f, file=sys.stderr)
+            continue
+        avg = get_avg(h)
+        p95 = get_p95(h)
+        if avg is None or p95 is None:
+            print("Пустая метрика в", f, file=sys.stderr)
+            continue
+        cpu = cpu_code_to_float(cpu_key)
+        by_cpu.setdefault(cpu, {})[mix_key] = (avg, p95)
+
+    if len(by_cpu) < 1:
+        print(
+            "LAB6: не найдено файлов вида *cpu10_mix50.json в",
+            root,
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    for cpu in CPU_STEPS:
+        mixes = by_cpu.get(cpu)
+        if not mixes:
+            print("LAB6: нет данных для CPU =", cpu, file=sys.stderr)
+            continue
+        avgs: list[float] = []
+        p95s: list[float] = []
+        ticks: list[str] = []
+        for mix in ("05", "50", "95"):
+            pair = mixes.get(mix)
+            ticks.append(MIX_TICK.get(mix, mix))
+            if pair is None:
+                avgs.append(0.0)
+                p95s.append(0.0)
+                print(
+                    "LAB6: нет файла для CPU",
+                    cpu,
+                    "mix",
+                    mix,
+                    file=sys.stderr,
+                )
+            else:
+                avgs.append(pair[0])
+                p95s.append(pair[1])
+
+        x = [0, 1, 2]
+        plt.figure(figsize=(8, 5))
+        plt.plot(
+            x,
+            avgs,
+            "o-",
+            color="#1f77b4",
+            linewidth=2,
+            markersize=8,
+            label="avg",
+        )
+        plt.plot(
+            x,
+            p95s,
+            "s-",
+            color="#ff7f0e",
+            linewidth=2,
+            markersize=7,
+            label="p(95)",
+        )
+        plt.xticks(x, ticks)
+        plt.xlabel("Смесь POST/GET")
+        plt.ylabel("http_req_duration (ms)")
+        plt.title(f"LAB6: задержка по смеси при CPU = {cpu:g} (k6 summary)")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        fname = f"lab6_cpu_{cpu:.1f}_mixed.png"
+        out = root / fname
+        plt.savefig(out, dpi=150)
+        plt.close()
+        print("Saved:", out)
+
+
 def main() -> None:
-    # Папка отчётов: из env (её задаёт run-lab4.ps1) или по умолчанию ./reports рядом со скриптом
-    default_dir = Path(__file__).resolve().parent / "reports"
-    root = Path(os.environ.get("K6_REPORTS_DIR", str(default_dir)))
+    here = Path(__file__).resolve().parent
+    ap = argparse.ArgumentParser(description="Графики по k6 summary JSON (LAB4 или LAB6).")
+    ap.add_argument(
+        "--lab6",
+        action="store_true",
+        help="Режим LAB6: *cpuNN_mixMM.json, 4 графика по CPU (0.5–2.0), смеси на оси X",
+    )
+    ap.add_argument(
+        "dir",
+        nargs="?",
+        default="",
+        help="Папка с JSON (по умолчанию: из env или reports / reports-lab6-pc)",
+    )
+    args = ap.parse_args()
+
+    if args.lab6:
+        default_l6 = here / "reports-lab6-pc"
+        root = Path(args.dir) if args.dir else Path(
+            os.environ.get("K6_LAB6_DIR", str(default_l6))
+        )
+        if not root.is_dir():
+            print("Нет папки:", root, file=sys.stderr)
+            sys.exit(1)
+        plot_lab6(root)
+        return
+
+    # LAB4: из env (run-lab4.ps1) или ./reports
+    default_dir = here / "reports"
+    root = Path(args.dir) if args.dir else Path(
+        os.environ.get("K6_REPORTS_DIR", str(default_dir))
+    )
 
     # Имя файла summary-vus-80.json: число — это TARGET_VUS того прогона
     name_pat = re.compile(r"^summary-vus-(\d+)\.json$")

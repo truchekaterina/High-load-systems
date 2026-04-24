@@ -1,6 +1,8 @@
 summary*.json
 reports/summary-vus-*.json
 reports/avg_vs_vus.png
+# LAB6: локальные summary JSON и графики (копия на ПК/ВМ)
+reports-lab6-*/
 
 # Кэш Python (встроен в run-lab4.ps1) — не коммитить
 __pycache__/
