@@ -76,6 +76,10 @@ function randomUuid() {
   });
 }
 
+function k6Phone() {
+  return `+7900${String(__VU).padStart(2, '0')}${String(__ITER).padStart(6, '0')}`;
+}
+
 /**
  * LAB6: один VU-цикл — с вероятностью POST_SHARE идёт POST, иначе GET.
  * (Сценарии LAB4 в этом режиме не используются; работает default.)
@@ -88,7 +92,7 @@ export default function () {
     const body = JSON.stringify({
       fullName: `k6 u${__VU} i${__ITER}`,
       driverLicense: 'DL-' + randomUuid(),
-      phone: `+7900${String(__VU).padStart(2, '0')}${String(__ITER).padStart(6, '0')}${Math.floor(Math.random() * 100)}`,
+      phone: k6Phone(),
     });
     const res = http.post(`${baseUrl}/clients`, body, jsonHeader);
     timePost.add(res.timings.duration);
@@ -105,7 +109,7 @@ export function doPost() {
   const body = JSON.stringify({
     fullName: `k6 u${__VU} i${__ITER}`,
     driverLicense: 'DL-' + randomUuid(),
-    phone: `+7900${String(__VU).padStart(2, '0')}${String(__ITER).padStart(6, '0')}`,
+    phone: k6Phone(),
   });
   const res = http.post(`${baseUrl}/clients`, body, jsonHeader);
   timePost.add(res.timings.duration);
