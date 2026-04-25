@@ -13,8 +13,8 @@ LAB6
   Имена:    *cpu<NN>_mix<MM>.json, например pc_cpu10_mix50.json
             cpu05 → 0.5, cpu10 → 1.0, …; mix05 / mix50 / mix95 — три сценария POST/GET.
   Файлы:    четыре графика — по одному на фиксированный CPU (0.5, 1.0, 1.5, 2.0):
-            lab6_cpu_0.5_mixed.png … lab6_cpu_2.0_mixed.png
-            На каждом: по оси X три смеси; две линии (avg, p(95)) с точками, без столбцов.
+            lab6_cpu_0.5_post_get.png … lab6_cpu_2.0_post_get.png
+            Ось X — три смеси POST/GET; две линии: Trend post_ms (POST /clients), get_ms (GET /stats).
 
 Зависимости: pip install matplotlib
 """
@@ -92,6 +92,7 @@ def cpu_code_to_float(c: str) -> float:
 
 def plot_lab6(root: Path) -> None:
     files = list(root.glob("*.json"))
+    # mix -> (post_avg, get_avg) — по одной линии на POST и на GET
     by_cpu: dict[float, dict[str, tuple[float, float]]] = {}
     for f in files:
         m = _LAB6_NAME.search(f.name)
@@ -102,19 +103,18 @@ def plot_lab6(root: Path) -> None:
             continue
         data = json.loads(f.read_text(encoding="utf-8"))
         met = data.get("metrics") or {}
-        h = met.get("http_req_duration")
-        if not h:
-            h = met.get("http_req_duration{expected_response:true}")
-        if not h:
-            print("Нет http_req_duration в", f, file=sys.stderr)
-            continue
-        avg = get_avg(h)
-        p95 = get_p95(h)
-        if avg is None or p95 is None:
-            print("Пустая метрика в", f, file=sys.stderr)
+        pa = get_avg(met.get("post_ms") or {})
+        ga = get_avg(met.get("get_ms") or {})
+        if pa is None or ga is None:
+            print(
+                "Нет post_ms и/или get_ms (avg) в",
+                f,
+                "(нужен load.js с Trend post_ms/get_ms в LAB6).",
+                file=sys.stderr,
+            )
             continue
         cpu = cpu_code_to_float(cpu_key)
-        by_cpu.setdefault(cpu, {})[mix_key] = (avg, p95)
+        by_cpu.setdefault(cpu, {})[mix_key] = (pa, ga)
 
     if len(by_cpu) < 1:
         print(
@@ -139,43 +139,43 @@ def plot_lab6(root: Path) -> None:
 
     for cpu in CPU_STEPS:
         mixes = by_cpu[cpu]
-        avgs: list[float] = []
-        p95s: list[float] = []
+        post_avgs: list[float] = []
+        get_avgs: list[float] = []
         ticks: list[str] = []
         for mix in ("05", "50", "95"):
-            pair = mixes[mix]
+            row = mixes[mix]
             ticks.append(MIX_TICK.get(mix, mix))
-            avgs.append(pair[0])
-            p95s.append(pair[1])
+            post_avgs.append(row[0])
+            get_avgs.append(row[1])
 
         x = [0, 1, 2]
         plt.figure(figsize=(8, 5))
         plt.plot(
             x,
-            avgs,
+            post_avgs,
             "o-",
             color="#1f77b4",
             linewidth=2,
             markersize=8,
-            label="avg",
+            label="POST /clients (post_ms avg)",
         )
         plt.plot(
             x,
-            p95s,
+            get_avgs,
             "s-",
             color="#ff7f0e",
             linewidth=2,
             markersize=7,
-            label="p(95)",
+            label="GET /stats (get_ms avg)",
         )
         plt.xticks(x, ticks)
         plt.xlabel("Смесь POST/GET")
-        plt.ylabel("http_req_duration (ms)")
-        plt.title(f"LAB6: задержка по смеси при CPU = {cpu:g} (k6 summary)")
+        plt.ylabel("Средняя задержка (ms)")
+        plt.title(f"LAB6: POST vs GET, CPU = {cpu:g} (k6 Trend, avg)")
         plt.legend()
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
-        fname = f"lab6_cpu_{cpu:.1f}_mixed.png"
+        fname = f"lab6_cpu_{cpu:.1f}_post_get.png"
         out = root / fname
         plt.savefig(out, dpi=150)
         plt.close()
