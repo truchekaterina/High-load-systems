@@ -44,7 +44,8 @@ services:
       SPRING_DATASOURCE_USERNAME: rental
       SPRING_DATASOURCE_PASSWORD: rental_pass
       SPRING_JPA_SHOW_SQL: "false"
-      SERVER_TOMCAT_MAX_THREADS: "50"
+      # server.tomcat.threads.max (Spring Boot 3+; см. внешнюю конфигурацию)
+      SERVER_TOMCAT_THREADS_MAX: "50"
     ports:
       - "8083:8083"
     # Лимиты CPU/RAM: cpus + mem_limit задают HostConfig на обычном `docker compose up` (без Swarm).
