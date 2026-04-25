@@ -124,30 +124,29 @@ def plot_lab6(root: Path) -> None:
         )
         sys.exit(1)
 
+    missing: list[tuple[float, str]] = []
     for cpu in CPU_STEPS:
-        mixes = by_cpu.get(cpu)
-        if not mixes:
-            print("LAB6: нет данных для CPU =", cpu, file=sys.stderr)
-            continue
+        mixes = by_cpu.get(cpu, {})
+        for mix in ("05", "50", "95"):
+            if mix not in mixes:
+                missing.append((cpu, mix))
+    if missing:
+        print("LAB6: не хватает ожидаемых файлов:", file=sys.stderr)
+        for cpu, mix in missing:
+            print(f"  CPU {cpu:g}, mix {mix}", file=sys.stderr)
+        print("Ожидаются файлы вида *cpu10_mix50.json для всех CPU и mix.", file=sys.stderr)
+        sys.exit(1)
+
+    for cpu in CPU_STEPS:
+        mixes = by_cpu[cpu]
         avgs: list[float] = []
         p95s: list[float] = []
         ticks: list[str] = []
         for mix in ("05", "50", "95"):
-            pair = mixes.get(mix)
+            pair = mixes[mix]
             ticks.append(MIX_TICK.get(mix, mix))
-            if pair is None:
-                avgs.append(0.0)
-                p95s.append(0.0)
-                print(
-                    "LAB6: нет файла для CPU",
-                    cpu,
-                    "mix",
-                    mix,
-                    file=sys.stderr,
-                )
-            else:
-                avgs.append(pair[0])
-                p95s.append(pair[1])
+            avgs.append(pair[0])
+            p95s.append(pair[1])
 
         x = [0, 1, 2]
         plt.figure(figsize=(8, 5))
