@@ -3,8 +3,8 @@
 # LAB6 / Swagger: http://127.0.0.1:8083/swagger-ui/index.html
 # Только БД под IDE / bootRun: docker compose up -d postgres (localhost:5433).
 #
-# IntelliJ / хост: jdbc:postgresql://localhost:5433/car_rental
-# Контейнер app:  jdbc:postgresql://postgres:5432/car_rental
+# IntelliJ / хост с локальной БД: jdbc:postgresql://localhost:5433/car_rental
+# LAB7 app: удаленная БД через env DBHOST/DBPORT/DBNAME (hl12.zil:5437/hl7)
 #
 # LAB6: лимиты CPU/RAM и смесь нагрузки меняй через env на хосте перед up:
 #   export APP_CPUS=0.5
@@ -36,13 +36,13 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: zil-app
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/car_rental
-      SPRING_DATASOURCE_USERNAME: rental
-      SPRING_DATASOURCE_PASSWORD: rental_pass
+      DBHOST: hl12.zil
+      DBPORT: "5437"
+      DBNAME: hl7
+      SCHEMANAME: hl7
+      SPRING_DATASOURCE_USERNAME: hl7
+      SPRING_DATASOURCE_PASSWORD: hl7
       SPRING_JPA_SHOW_SQL: "false"
       # server.tomcat.threads.max (Spring Boot 3+; см. внешнюю конфигурацию)
       SERVER_TOMCAT_THREADS_MAX: "50"
