@@ -57,8 +57,8 @@
 ## 2. Что в итоге должно получиться (картинка в голове)
 
 1. Ты **заходишь на свою ВМ** по SSH, **обновляешь ОС**, настраиваешь **вход по ключу**.
-2. На ВМ **стоит git**, **клонирован** твой репозиторий, **Docker** установлен, ты **залогинена в Docker Hub** (`docker login`).
-3. В каталоге с проектом `**zil`** команда `**docker compose up --build -d**` поднимает **Postgres + Spring Boot** (как в репо).
+2. На ВМ **стоит git**, **клонирован** твой репозиторий, **Docker** установлен; для образа приложения — **`docker login hlssh.zil.digital:2313`** (Harbor, учётка из таблицы) либо Hub, если курс так требует.
+3. В каталоге `**zil`** команды **`docker compose pull app`** и **`docker compose up -d`** поднимают **Postgres + Spring Boot** по образу из Harbor (см. **`ZIL_APP_IMAGE`**).
 4. С **своего ПК** ты открываешь **SSH-туннель** и в браузере проверяешь **Swagger** и работу API.
 5. В `docker-compose.yml` **явно** прописаны **CPU/RAM** для `app` и **переменные окружения** для: URL БД, логина/пароля БД, **Tomcat max threads**, **отключения `spring.jpa.show-sql`**.
 6. Ты снимаешь **зависимость: среднее время ответа от выставленного лимита CPU** при **постоянном VU** для трёх смесей (5/95, 50/50, 95/5) и **двух схем**: нагрузка **с домашнего ПК** на ВМ и **с ВМ k6** на **твою** ВМ (или на ту же, как скажет преподаватель).
@@ -207,7 +207,7 @@ git checkout lab6-vm-docker-k6
 
 ---
 
-## 6. Блок D. Docker и Docker Hub
+## 6. Блок D. Docker и реестр образов (Harbor / при необходимости Docker Hub)
 
 ### 6.1. Установка Docker (если нет)
 
@@ -228,32 +228,31 @@ sudo usermod -aG docker $USER
 
 **Выйди из сессии SSH и зайди снова**, потом `docker ps` без `sudo`.
 
-### 6.2. Docker Hub
+### 6.2. Harbor (курс, порт **2313** в таблице ресурсов)
 
-На сайте [hub.docker.com](https://hub.docker.com) — **Account Settings → Security → New Access Token** (как **«дополнительный пароль»** для CLI).
+Образ приложения в `docker-compose.yml` по умолчанию берётся из **Harbor**: `hlssh.zil.digital:2313/...` (см. переменную **`ZIL_APP_IMAGE`**). Подробно логин и сценарий пуша — в **[LAB8_PLAN_RU.md](LAB8_PLAN_RU.md)** (раздел «На Harbor/registry»): `docker login <HARBOR_HOST>:<HARBOR_PORT>` с **username/password из таблицы**, пароль в открытые команды не вставлять.
 
-На ВМ:
+После логина: **собрать** образ с полным тегом Harbor, **запушить**, на прикладной ВМ — **`docker compose pull app`** и **`up`**.
 
-```bash
-docker login
-```
+### 6.3. Docker Hub (только если курс требует именно Hub, а не Harbor)
 
-Ввести: username Docker Hub, **пароль = токен** (не основной пароль от сайта, если включена 2FA — только токен).
-
-**Смысл:** `docker push`/`pull` с приватных репо и лимитов; в LAB6 чаще достаточно **входа** как факт выполнения ТЗ.
+На сайте [hub.docker.com](https://hub.docker.com) — **Account Settings → Security → New Access Token**; на ВМ `docker login`, в пароль — токен. Если используешь Hub, задай **`ZIL_APP_IMAGE`** в `.env` на имя из Hub.
 
 ---
 
 ## 7. Блок E. Развёртывание `docker compose` в `zil`
 
-На ВМ:
+На ВМ (образ `app` из Harbor — см. **`ZIL_APP_IMAGE`** в [docker-compose.yml](../docker-compose.yml)):
 
 ```bash
 cd ~/work/Labs_hls/zil
-docker compose up --build -d
+docker compose pull app
+docker compose up -d
 docker compose ps
 docker compose logs app --tail 80
 ```
+
+Сборка образа на ВМ **не** обязательна, если образ уже **запушен** в Harbor с твоего ПК или с той же ВМ (как в LAB8). Локальная **пересборка** — только при изменении `Dockerfile` и повторном `docker push` с тем же тегом.
 
 **Если падает миграция/БД:** смотри логи `app` и `postgres`. В проекте по умолчанию имя БД в compose — **car_rental**; в таблице у тебя написано **hl7**. **Уточни у преподавателя:** нужно ли переименовать `POSTGRES_DB` / JDBC в `SPRING_DATASOURCE_URL` в `**hl7`** для зачёта, или `hl7` — это имя **отдельного** кластера БД, а в Docker ты всё ещё используешь **встроенный postgres** с `car_rental`. Записи в **отчёте** должны совпадать с тем, что реально крутится.
 
@@ -281,7 +280,7 @@ ssh -p 2307 -L 8080:127.0.0.1:8083 hl@hlssh.zil.digital
 
 ## 9. Блок G. Swagger (если нет — добавить)
 
-Если на работающем приложении **нет** OpenAPI / Swagger, в **ветке `lab6-vm-docker-k6`** в `**zil/build.gradle**` добавляют зависимость **springdoc** (версия под Spring Boot 4 — как в [springdoc v4](https://springdoc.org/)) и **коммитят** → `git push` → на ВМ `git pull` → `docker compose up --build -d`.
+Если на работающем приложении **нет** OpenAPI / Swagger, в **ветке `lab6-vm-docker-k6`** в `**zil/build.gradle**` добавляют зависимость **springdoc** (версия под Spring Boot 4 — как в [springdoc v4](https://springdoc.org/)) и **коммитят** → `git push` → на ВМ `git pull` → `docker compose pull app` → `docker compose up -d` (или пересобрать и запушить образ, если менялся только код приложения).
 
 Потом в браузере (через туннель) открывают, например:
 
@@ -342,7 +341,7 @@ docker exec -it zil-app env | grep -E 'SPRING|SERVER_TOMCAT'
 ## 12. Блок J. Чеклист сдачи (самопроверка)
 
 - ВМ обновлена, вход **по ключу** работает, пароли `hl`/`root` **не** меняла.  
-- Репо склонирован, ветка **lab6-vm-docker-k6**, **Docker** + `**docker login`**.  
+- Репо склонирован, ветка **lab6-vm-docker-k6**, **Docker** + `docker login` в **Harbor** (`hlssh.zil.digital:2313`) при работе с образом курса.  
 - `docker compose` поднимает **app + db**, health выглядит адекватно.  
 - **Swagger** открывается **через туннель** (с корректным портом **8080→8083**).  
 - В compose **CPU/RAM** и **env** (БД, **tomcat threads**, `SPRING_JPA_SHOW_SQL`) **явно** заданы.  

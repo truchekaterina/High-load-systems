@@ -1,6 +1,23 @@
-# LAB3: PostgreSQL + Spring Boot. Сборка app: zil/Dockerfile (bootJar внутри контейнера).
-# Из папки zil: docker compose up --build -d  (или open-swagger.ps1 / open-swagger.cmd)
-# LAB6 / Swagger: http://127.0.0.1:8083/swagger-ui/index.html
+# PostgreSQL (официальный postgres:16-alpine с registry-1.docker.io) + Spring Boot.
+# Образ приложения app только из Harbor (см. image ниже); Docker Hub для push своего JAR-образа не используем.
+#
+# Сервис app по умолчанию: ZIL_APP_IMAGE = hlssh.zil.digital:2313/<проект>/zil-app:lab6
+# (см. LAB8: «На Harbor/registry» — docker login <HARBOR_HOST>:<HARBOR_PORT>).
+# Проект в Harbor должен совпадать с тем, что создали/выдали на курсе; если другой — задайте:
+#   PowerShell:  $env:ZIL_APP_IMAGE="hlssh.zil.digital:2313/ВАШ_ПРОЕКТ/zil-app:lab6"
+#   bash:        export ZIL_APP_IMAGE=...
+# или файл .env рядом с этим compose (не коммитьте пароли).
+#
+# Сборка и пуш (на ПК или на прикладной ВМ, из папки zil):
+#   docker login hlssh.zil.digital:2313
+#   docker build -t hlssh.zil.digital:2313/truchekaterina/zil-app:lab6 .
+#   docker push  hlssh.zil.digital:2313/truchekaterina/zil-app:lab6
+# На ВМ после git pull:  docker compose pull app && docker compose up -d
+#
+# Если Harbor на HTTP и Docker ругается на HTTPS — по инструкции курса добавьте insecure-registries
+# в Docker Desktop / /etc/docker/daemon.json (только host:port из таблицы).
+#
+# Локально: open-swagger.ps1 / open-swagger.cmd, Swagger: http://127.0.0.1:8083/swagger-ui/index.html
 # Только БД под IDE / bootRun: docker compose up -d postgres (localhost:5433).
 #
 # IntelliJ / хост: jdbc:postgresql://localhost:5433/car_rental
@@ -32,9 +49,7 @@ services:
       retries: 10
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${ZIL_APP_IMAGE:-hlssh.zil.digital:2313/truchekaterina/zil-app:lab6}
     container_name: zil-app
     depends_on:
       postgres:

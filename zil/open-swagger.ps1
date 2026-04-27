@@ -1,12 +1,23 @@
-# Поднять postgres + app (сборка JAR в Docker по zil/Dockerfile) и открыть Swagger в браузере.
-# Первая сборка может идти несколько минут (Gradle внутри образа). При обрыве демона Docker — перезапустите Docker Desktop и повторите.
+# Поднять postgres + app. Образ по умолчанию — Harbor (см. docker-compose.yml): hlssh.zil.digital:2313/.../zil-app:lab6
+# Логин: docker login hlssh.zil.digital:2313  (учётка/пароль из таблицы курса, см. LAB8_PLAN_RU.md)
+# Если pull не удался (образа ещё нет / не залогинена) — локальная сборка с тем же тегом, затем push в Harbor.
 # Запуск:  cd zil  ;  .\open-swagger.ps1
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-Write-Host "docker compose up --build -d (postgres + app)..." -ForegroundColor Cyan
-docker compose up --build -d
+$defaultTag = "hlssh.zil.digital:2313/truchekaterina/zil-app:lab6"
+if (-not $env:ZIL_APP_IMAGE) { $env:ZIL_APP_IMAGE = $defaultTag }
+
+Write-Host "docker compose pull app (реестр)..." -ForegroundColor Cyan
+docker compose pull app
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Pull не вышел — локальная сборка: docker build -t $($env:ZIL_APP_IMAGE) . (может занять несколько минут)..." -ForegroundColor Yellow
+    docker build -t $env:ZIL_APP_IMAGE .
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+Write-Host "docker compose up -d (postgres + app)..." -ForegroundColor Cyan
+docker compose up -d
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Waiting for http://127.0.0.1:8083/cars (up to 90s)..." -ForegroundColor Cyan
