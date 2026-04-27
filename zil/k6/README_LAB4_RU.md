@@ -1,5 +1,7 @@
 # LAB4 — нагрузка k6 (максимально просто)
 
+**Объединённая шпаргалка по LAB4 / LAB6 / LAB8, docker-compose и папкам с отчётами:** см. **[README_K6_LABS_RU.md](README_K6_LABS_RU.md)**.
+
 **Что тут задумано:** программа **k6** много раз дергает твой сервер, как будто к нему ходят «виртуальные пользователи» (VU). Мы смотрим, растёт ли задержка ответа, когда VU больше. Для зачёта ещё нужна **картинка-график** — её строит **Python-скрипт** `plot_k6_reports.py` (комментарии в нём **по-русски**), а запуск по шагам делает `run-lab4.ps1`.
 
 **Что лежит в `zil\k6` (скрипты + папка с отчётами):**
@@ -8,8 +10,8 @@
 |------|--------|
 | `load.js` | Сценарий k6: POST `/clients` + GET `/stats`. **LAB4 по умолчанию** — ramping-vus (см. `run-lab4.ps1`). **LAB6** — в том же файле: `LAB6_CONST=1`, плюс `TARGET_VUS`, `POST_SHARE`, `DURATION` (см. комментарий в начале `load.js`) |
 | `run-lab4.ps1` | Запускает k6 несколько раз с разным числом VU, затем вызывает `plot_k6_reports.py` |
-| `plot_k6_reports.py` | Читает `reports\summary-vus-*.json`, рисует `reports\avg_vs_vus.png` (нужен `matplotlib`) |
-| `reports\` | Сюда падают json с замерами и картинка. В git картинки и json обычно не кладут. |
+| `plot_k6_reports.py` | Без `--lab6`: читает `reports\summary-vus-*.json`, рисует `avg_vs_vus.png`. Режим **LAB6**: `--lab6` → см. [README_K6_LABS_RU.md](README_K6_LABS_RU.md) |
+| `reports\` | Сюда падают json LAB4 и картинка. Для LAB6 используйте подпапки `reports-lab6-pc` / `reports-lab6-s2s` (см. README_K6_LABS_RU). |
 
 **Адрес API по умолчанию:** `http://localhost:8083`
 

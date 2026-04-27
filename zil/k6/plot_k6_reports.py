@@ -7,14 +7,13 @@ LAB4 (по умолчанию)
   (если нет: ./reports рядом со скриптом). Ось X: TARGET_VUS. Кривые: post_ms, get_ms.
   Файл: reports/avg_vs_vus.png
 
-LAB6
-  Команда:  py plot_k6_reports.py --lab6
-  Каталог:  K6_LAB6_DIR или ./reports-lab6-pc рядом со скриптом.
-  Имена:    *cpu<NN>_mix<MM>.json, например pc_cpu10_mix50.json
-            cpu05 → 0.5, cpu10 → 1.0, …; mix05 / mix50 / mix95 — три сценария POST/GET.
-  Файлы:    четыре графика — по одному на фиксированный CPU (0.5, 1.0, 1.5, 2.0):
-            lab6_cpu_0.5_post_get.png … lab6_cpu_2.0_post_get.png
-            Ось X — три смеси POST/GET; две линии: Trend post_ms (POST /clients), get_ms (GET /stats).
+LAB6 (ТЗ: время отклика от числа CPU, шаг 0.5; const VU задаётся прогонами k6)
+  py plot_k6_reports.py --lab6
+  py plot_k6_reports.py --lab6 reports-lab6-s2s
+  Имена JSON: *cpu<NN>_mix<MM>.json (напр. pc_cpu10_mix50.json)
+  Выход: lab6_latency_vs_cpu.png — три subplot (5/95 | 50/50 | 95/5), ось X = CPU, Y = avg.
+
+LAB6 — прежний вид (четыре PNG: фиксированный CPU, смесь по оси X): --lab6-legacy
 
 Зависимости: pip install matplotlib
 """
@@ -27,6 +26,8 @@ import os
 import re
 import sys
 from pathlib import Path
+
+from matplotlib.lines import Line2D
 
 # Рисуем без окна (подходит для сервера и для запуска из PowerShell без GUI).
 try:
@@ -70,13 +71,7 @@ def get_p95(m: dict | None) -> float | None:
     return None
 
 
-# cpu05|cpu10|… -> 0.5, 1.0, …; mix05|50|95 -> подписи смеси POST/GET
 _LAB6_NAME = re.compile(r"cpu(\d+)_mix(\d+)\.json$", re.IGNORECASE)
-MIX_LABELS: dict[str, str] = {
-    "05": "5% POST / 95% GET",
-    "50": "50% / 50%",
-    "95": "95% POST / 5% GET",
-}
 MIX_TICK: dict[str, str] = {
     "05": "5/95",
     "50": "50/50",
@@ -90,11 +85,10 @@ def cpu_code_to_float(c: str) -> float:
     return int(c, 10) / 10.0
 
 
-def plot_lab6(root: Path) -> None:
-    files = list(root.glob("*.json"))
-    # mix -> (post_avg, get_avg) — по одной линии на POST и на GET
+def _load_lab6_matrix(root: Path) -> dict[float, dict[str, tuple[float, float]]]:
+    """by_cpu[cpu][mix] = (post_avg, get_avg)."""
     by_cpu: dict[float, dict[str, tuple[float, float]]] = {}
-    for f in files:
+    for f in root.glob("*.json"):
         m = _LAB6_NAME.search(f.name)
         if not m:
             continue
@@ -115,7 +109,13 @@ def plot_lab6(root: Path) -> None:
             continue
         cpu = cpu_code_to_float(cpu_key)
         by_cpu.setdefault(cpu, {})[mix_key] = (pa, ga)
+    return by_cpu
 
+
+def _ensure_lab6_complete(
+    by_cpu: dict[float, dict[str, tuple[float, float]]],
+    root: Path,
+) -> None:
     if len(by_cpu) < 1:
         print(
             "LAB6: не найдено файлов вида *cpu10_mix50.json в",
@@ -123,7 +123,6 @@ def plot_lab6(root: Path) -> None:
             file=sys.stderr,
         )
         sys.exit(1)
-
     missing: list[tuple[float, str]] = []
     for cpu in CPU_STEPS:
         mixes = by_cpu.get(cpu, {})
@@ -136,6 +135,79 @@ def plot_lab6(root: Path) -> None:
             print(f"  CPU {cpu:g}, mix {mix}", file=sys.stderr)
         print("Ожидаются файлы вида *cpu10_mix50.json для всех CPU и mix.", file=sys.stderr)
         sys.exit(1)
+
+
+def plot_lab6_cpu_axis(root: Path, title_suffix: str = "") -> None:
+    """Ось X = CPU; три панели по смесям write/read (формулировка ТЗ LAB6)."""
+    by_cpu = _load_lab6_matrix(root)
+    _ensure_lab6_complete(by_cpu, root)
+
+    mix_order = ("05", "50", "95")
+    subtitles = (
+        "write/read = 5/95",
+        "write/read = 50/50",
+        "write/read = 95/5",
+    )
+    xs = list(CPU_STEPS)
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 5), sharey=True)
+    supt = "Avg response time (ms) vs CPU cores"
+    if title_suffix:
+        supt += f" ({title_suffix})"
+    fig.suptitle(supt, fontsize=12, y=1.02)
+
+    for ax, mix, sub in zip(axes, mix_order, subtitles, strict=True):
+        posts = [by_cpu[c][mix][0] for c in CPU_STEPS]
+        gets = [by_cpu[c][mix][1] for c in CPU_STEPS]
+        ax.plot(xs, posts, "o-", color="#1f77b4", linewidth=2, markersize=7)
+        ax.plot(xs, gets, "o-", color="#ff7f0e", linewidth=2, markersize=7)
+        for x, p in zip(xs, posts, strict=True):
+            ax.annotate(
+                f"{p:.1f}",
+                (x, p),
+                textcoords="offset points",
+                xytext=(0, 8),
+                ha="center",
+                fontsize=8,
+            )
+        for x, g in zip(xs, gets, strict=True):
+            ax.annotate(
+                f"{g:.1f}",
+                (x, g),
+                textcoords="offset points",
+                xytext=(0, -14),
+                ha="center",
+                fontsize=8,
+                color="#555555",
+            )
+        ax.set_xticks(xs)
+        ax.set_xlabel("CPU cores")
+        ax.set_title(sub, fontsize=10)
+        ax.grid(True, linestyle=":", alpha=0.55)
+
+    axes[0].set_ylabel("Avg response time (ms)")
+    legend_elem = [
+        Line2D([0], [0], color="#1f77b4", marker="o", linestyle="-", linewidth=2, label="POST /clients"),
+        Line2D([0], [0], color="#ff7f0e", marker="o", linestyle="-", linewidth=2, label="GET /stats"),
+    ]
+    fig.legend(
+        handles=legend_elem,
+        loc="upper center",
+        ncol=2,
+        bbox_to_anchor=(0.5, 1.08),
+        frameon=False,
+    )
+    fig.tight_layout()
+    out = root / "lab6_latency_vs_cpu.png"
+    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close()
+    print("Saved:", out)
+
+
+def plot_lab6_legacy(root: Path) -> None:
+    """Четыре PNG: фиксированный CPU, по оси X три смеси (старый вид отчёта)."""
+    by_cpu = _load_lab6_matrix(root)
+    _ensure_lab6_complete(by_cpu, root)
 
     for cpu in CPU_STEPS:
         mixes = by_cpu[cpu]
@@ -188,17 +260,27 @@ def main() -> None:
     ap.add_argument(
         "--lab6",
         action="store_true",
-        help="Режим LAB6: *cpuNN_mixMM.json, 4 графика по CPU (0.5–2.0), смеси на оси X",
+        help="LAB6 (ТЗ): ось X = CPU, три панели → lab6_latency_vs_cpu.png",
+    )
+    ap.add_argument(
+        "--lab6-legacy",
+        action="store_true",
+        help="LAB6 старый вид: 4 PNG по CPU",
+    )
+    ap.add_argument(
+        "--title-suffix",
+        default="",
+        help="Подзаголовок к фигуре LAB6 (напр. pc / s2s)",
     )
     ap.add_argument(
         "dir",
         nargs="?",
         default="",
-        help="Папка с JSON (по умолчанию: из env или reports / reports-lab6-pc)",
+        help="Папка с JSON (по умолчанию reports или reports-lab6-pc)",
     )
     args = ap.parse_args()
 
-    if args.lab6:
+    if args.lab6 or args.lab6_legacy:
         default_l6 = here / "reports-lab6-pc"
         root = Path(args.dir) if args.dir else Path(
             os.environ.get("K6_LAB6_DIR", str(default_l6))
@@ -206,16 +288,23 @@ def main() -> None:
         if not root.is_dir():
             print("Нет папки:", root, file=sys.stderr)
             sys.exit(1)
-        plot_lab6(root)
+        suffix = args.title_suffix.strip()
+        if not suffix:
+            if "reports-lab6-pc" in root.parts:
+                suffix = "local PC → server"
+            elif "reports-lab6-s2s" in root.parts:
+                suffix = "server → server"
+        if args.lab6_legacy:
+            plot_lab6_legacy(root)
+        else:
+            plot_lab6_cpu_axis(root, title_suffix=suffix)
         return
 
-    # LAB4: из env (run-lab4.ps1) или ./reports
     default_dir = here / "reports"
     root = Path(args.dir) if args.dir else Path(
         os.environ.get("K6_REPORTS_DIR", str(default_dir))
     )
 
-    # Имя файла summary-vus-80.json: число — это TARGET_VUS того прогона
     name_pat = re.compile(r"^summary-vus-(\d+)\.json$")
     post_pts: list[tuple[int, float]] = []
     get_pts: list[tuple[int, float]] = []
@@ -227,7 +316,6 @@ def main() -> None:
         vus = int(m.group(1))
         data = json.loads(f.read_text(encoding="utf-8"))
         met = data.get("metrics") or {}
-        # Имена post_ms и get_ms совпадают с Trend() в load.js
         a = get_avg(met.get("post_ms") or {})
         b = get_avg(met.get("get_ms") or {})
         if a is not None:
@@ -250,7 +338,6 @@ def main() -> None:
     yg = [a[1] for a in get_pts]
 
     plt.figure(figsize=(9, 5.5))
-    # Две кривые: запись клиентов и чтение статистики
     plt.plot(vp, yp, "o-", label="POST /clients", color="#1f77b4", linewidth=2, markersize=7)
     plt.plot(vg, yg, "s-", label="GET /stats", color="#ff7f0e", linewidth=2, markersize=7)
     plt.legend()
