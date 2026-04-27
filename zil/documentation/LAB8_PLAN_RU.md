@@ -5,7 +5,7 @@
 Из LAB7 уже зафиксированы рабочие значения для этого проекта:
 
 - ФИО: `Трюх Екатерина`;
-- основной репозиторий: `https://github.com/tryuchekaterina/Labs_hls`;
+- основной репозиторий: `https://github.com/truchekaterina/Labs_hls`;
 - LAB7 branch/commit: `lab7`, `272f817 LAB7: подключить приложение к удаленной БД`, ветка запушена и совпадает с `origin/lab7`;
 - app-нода: `hl07`, вход `ssh -p 2307 hl@hlssh.zil.digital`;
 - DB-нода: `hl12`, вход `ssh -p 2312 hl@hlssh.zil.digital`;
@@ -13,6 +13,8 @@
 - DB name/user/schema: `hl7`, внешний порт PostgreSQL `5437`, внутренний порт контейнера `5432`.
 
 Пароли Harbor, DB и другие секреты в публичный репозиторий не добавляйте: ниже они остаются placeholders вида `<HARBOR_PASSWORD>` и `<DB_PASSWORD>`. Значение `hl7` здесь используется как имя БД/пользователь/схема; если на учебной ВМ пароль тоже задан как `hl7`, это всё равно лучше держать в серверном `.env` или вводить на ВМ, а не фиксировать в публичной документации.
+
+Сводка по **k6**, папкам отчётов и связке веток с **`docker-compose`**: **[zil/k6/README_K6_LABS_RU.md](../k6/README_K6_LABS_RU.md)**.
 
 ---
 
@@ -201,7 +203,7 @@ PostgreSQL на DB-ноде
 | Что | Где взять | Пример/заметка |
 | --- | --- | --- |
 | ФИО | текущая строка студента | `Трюх Екатерина` |
-| GitHub repo основного сервиса | LAB7 | `https://github.com/tryuchekaterina/Labs_hls` |
+| GitHub repo основного сервиса | LAB7 | `https://github.com/truchekaterina/Labs_hls` |
 | LAB7 branch/commit | Git | `lab7`, `272f817 LAB7: подключить приложение к удаленной БД` |
 | Основной SSH host | таблица/методичка | `hlssh.zil.digital` |
 | App-нода | таблица ресурсов | `hl07` |

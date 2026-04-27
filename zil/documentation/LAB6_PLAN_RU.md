@@ -400,6 +400,8 @@ docker exec -it zil-app env | grep -E 'SPRING|SERVER_TOMCAT'
 
 **Репозиторий:** один сценарий `zil/k6/load.js` — для LAB6 задать `LAB6_CONST=1`, `DURATION`, `TARGET_VUS`, `POST_SHARE` (см. комментарий в начале `load.js`). Обёртка `run-lab6.ps1` не обязательна — достаточно команд `k6 run` на Windows или на ВМ k6.
 
+**Сводка LAB4/LAB6/LAB8, папки отчётов и связка с `docker-compose`:** файл **[zil/k6/README_K6_LABS_RU.md](../k6/README_K6_LABS_RU.md)**.
+
 ---
 
 ## 12. Блок J. Чеклист сдачи (самопроверка)

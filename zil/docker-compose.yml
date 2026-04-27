@@ -1,41 +1,46 @@
-# PostgreSQL + Spring Boot (два разных реестра — это нормально).
+# PostgreSQL + Spring Boot — один файл для цепочки лаб (LAB6 → LAB7 → LAB8).
 #
-# • postgres — публичный образ с Docker Hub (docker.io). Обычно тянется без login; при лимитах
-#   «анонимных» pull помогает: docker login -u <логин Hub> (PAT в пароле) — как в ТЗ LAB6.
-# • app — ваш JAR-образ только из Harbor (курс / hl13): ZIL_APP_IMAGE ниже.
-#   Для pull/push app: docker login hlssh.zil.digital:2313  (учётка Harbor, не Hub).
-# Если в задании сказано «при Harbor на hl13 настраивать Docker Hub не нужно» — речь именно
-# про приложение: оно не хранится в Hub, Hub-логин не подставляет образ app в compose.
+# ═══════════════════════════════════════════════════════════════════════════════
+# ОБРАЗ APP (Harbor ИЛИ Docker Hub)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Переменная ZIL_APP_IMAGE задаёт, откуда тянуть образ основного сервиса.
 #
-# Сервис app по умолчанию: ZIL_APP_IMAGE = hlssh.zil.digital:2313/<проект>/zil-app:lab6
-# (см. LAB8: «На Harbor/registry» — docker login <HARBOR_HOST>:<HARBOR_PORT>).
-# Проект в Harbor должен совпадать с тем, что создали/выдали на курсе; если другой — задайте:
-#   PowerShell:  $env:ZIL_APP_IMAGE="hlssh.zil.digital:2313/ВАШ_ПРОЕКТ/zil-app:lab6"
-#   bash:        export ZIL_APP_IMAGE=...
-# или файл .env рядом с этим compose (не коммитьте пароли).
+# • Harbor (курс): docker login hlssh.zil.digital:2313
+#     export ZIL_APP_IMAGE=hlssh.zil.digital:2313/<проект>/zil-app:lab6
 #
-# Сборка и пуш (на ПК или на прикладной ВМ, из папки zil):
-#   docker login hlssh.zil.digital:2313
-#   docker build -t hlssh.zil.digital:2313/truchekaterina/zil-app:lab6 .
-#   docker push  hlssh.zil.digital:2313/truchekaterina/zil-app:lab6
-# На ВМ после git pull:  docker compose pull app && docker compose up -d
+# • Docker Hub (если Harbor не используешь — см. LAB6_PLAN_RU §15):
+#     docker login -u <DOCKER_ID>   # пароль = PAT с hub.docker.com
+#     export ZIL_APP_IMAGE=docker.io/<DOCKER_ID>/zil-app:lab6
 #
-# Если Harbor на HTTP и Docker ругается на HTTPS — по инструкции курса добавьте insecure-registries
-# в Docker Desktop / /etc/docker/daemon.json (только host:port из таблицы).
+# Образ postgres:16-alpine тянется с публичного Hub; при лимитах анонимных pull — docker login Hub.
 #
-# Локально: open-swagger.ps1 / open-swagger.cmd, Swagger: http://127.0.0.1:8083/swagger-ui/index.html
-# Только БД под IDE / bootRun: docker compose up -d postgres (localhost:5433).
+# ═══════════════════════════════════════════════════════════════════════════════
+# ПОДКЛЮЧЕНИЕ К БД (зависит от ветки / этапа лабы)
+# ═══════════════════════════════════════════════════════════════════════════════
+# LAB6 (этот файл на ветке lab6-vm-docker-k6): app ходит в ЛОКАЛЬНЫЙ контейнер postgres
+#   ниже — SPRING_DATASOURCE_* на postgres:5432 + depends_on postgres — это норма для ТЗ LAB6.
 #
-# IntelliJ / хост: jdbc:postgresql://localhost:5433/car_rental
-# Контейнер app:  jdbc:postgresql://postgres:5432/car_rental
+# LAB7 (ветка lab7, см. LAB7_PLAN_RU): БД на узле hl12.zil — в app.environment задают
+#   DBHOST, DBPORT, DBNAME, SCHEMANAME, SPRING_DATASOURCE_USERNAME/PASSWORD;
+#   строка JDBC в application.properties через ${DBHOST}… (не через postgres hostname).
+#   depends_on: postgres у app обычно убирают или не поднимают локальный postgres для защиты.
 #
-# LAB6: лимиты CPU/RAM и смесь нагрузки меняй через env на хосте перед up:
-#   export APP_CPUS=0.5
+# LAB8: как LAB7 по БД + второй сервис additional (ветка lab8-ads, см. LAB8_PLAN_RU).
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# CPU/RAM (LAB6 k6, LAB8 измерения)
+# ═══════════════════════════════════════════════════════════════════════════════
+#   export APP_CPUS=0.5   # или 1.0, 1.5, 2.0 …
 #   export APP_MEM=768m
 #   docker compose up -d --force-recreate --no-deps app
 # Проверка: docker inspect zil-app --format '{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}'
-# 0.5 CPU -> 500000000 наносек, 1.0 -> 1000000000, 1.5 -> 1500000000, 2.0 -> 2000000000
-
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# Локальная разработка и Swagger
+# ═══════════════════════════════════════════════════════════════════════════════
+# Локально: open-swagger.ps1 / open-swagger.cmd → http://127.0.0.1:8083/swagger-ui/index.html
+# Только БД под IDE: docker compose up -d postgres  →  jdbc:postgresql://localhost:5433/car_rental
+#
 services:
   postgres:
     image: postgres:16-alpine
@@ -65,13 +70,9 @@ services:
       SPRING_DATASOURCE_USERNAME: rental
       SPRING_DATASOURCE_PASSWORD: rental_pass
       SPRING_JPA_SHOW_SQL: "false"
-      # server.tomcat.threads.max (Spring Boot 3+; см. внешнюю конфигурацию)
       SERVER_TOMCAT_THREADS_MAX: "50"
     ports:
       - "8083:8083"
-    # Лимиты CPU/RAM: cpus + mem_limit задают HostConfig на обычном `docker compose up` (без Swarm).
-    # Секция `deploy.resources` в части окружений не применяется к `compose up` — тогда в inspect
-    # всегда 1 CPU (1000000000 нс). Подставляется из env хоста: export APP_CPUS=0.5 перед up.
     cpus: "${APP_CPUS:-1.0}"
     mem_limit: "${APP_MEM:-768m}"
 

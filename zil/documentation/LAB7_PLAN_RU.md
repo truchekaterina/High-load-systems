@@ -6,6 +6,23 @@
 
 ---
 
+## 0. Связь с LAB6: образ приложения и реестр
+
+LAB7 логично делать **сразу после LAB6** на той же прикладной ВМ: те же Docker, те же приёмы деплоя. На LAB7 меняется главным образом **куда ходит JDBC** — на удалённую БД **`hl12.zil`**, а не в локальный контейнер `postgres`.
+
+**Образ основного приложения (`app`):**
+
+- Если вы уже публикуете образ в **Docker Hub** (без Harbor) — продолжайте так же: **`docker login`** на hub.docker.com с **PAT**, тег **`docker.io/<DOCKER_ID>/zil-app:<тег>`**, на ВМ **`export ZIL_APP_IMAGE=...`** и **`docker compose pull app`**. Пошагово это расписано в **[LAB6_PLAN_RU §15](LAB6_PLAN_RU.md#15-лаб-6-образы-только-из-docker-hub-без-harbor-пошагово-для-новичка)**.
+- Если курс требует **Harbor** (`hlssh.zil.digital:2313`) — используйте **`docker login`** к Harbor и **`ZIL_APP_IMAGE`** с полным путём проекта в Harbor (как в LAB6/LAB8-доках).
+
+Образ **`postgres:16-alpine`** для контейнера БД на **DB-ноде** по-прежнему подтягивается с публичного Docker Hub; отдельный **`docker login`** на Hub для него обычно не нужен, если не упёрлись в лимиты анонимного pull.
+
+После смены кода под LAB7 не забудьте **пересобрать и запушить** образ `app` с новым тегом (например `:lab7`), затем на ВМ **`pull`** и **`up`**.
+
+**Чтобы не путать k6-отчёты и настройки compose между лабами:** см. **[README_K6_LABS_RU.md](../k6/README_K6_LABS_RU.md)** в папке `zil/k6`.
+
+---
+
 ## 1. Что уже есть в проекте
 
 Перед LAB7 полезно понимать, от чего мы отталкиваемся.
@@ -65,7 +82,7 @@ Hibernate настроен как `spring.jpa.hibernate.ddl-auto=validate`, то
 
 ### Документация
 
-В `zil/documentation` уже есть подробные планы LAB2-LAB6. LAB7 продолжает эту же линию: Docker, удалённые ВМ, переменные окружения, Flyway и проверка через Swagger/API.
+В `zil/documentation` уже есть подробные планы LAB2-LAB6 (включая **[LAB6_PLAN_RU — Docker Hub vs Harbor](LAB6_PLAN_RU.md)**). LAB7 продолжает эту же линию: Docker, удалённые ВМ, переменные окружения, Flyway и проверка через Swagger/API; к LAB7 добавляется только вынос PostgreSQL на **`hl12.zil`** и JDBC через **`DBHOST`/`DBPORT`/`DBNAME`/`SCHEMANAME`**.
 
 ---
 
@@ -111,7 +128,7 @@ DB-нода hl12.zil
 | Поле | Значение |
 | --- | --- |
 | ФИО | `Трюх Екатерина` |
-| Git repo | `https://github.com/tryuchekaterina/Labs_hls` |
+| Git repo | `https://github.com/truchekaterina/Labs_hls` |
 | SSH-порт прикладной ВМ | `2307` |
 | SSH-порт DB-ноды | `2312` |
 | DB name / `DBNAME` | `hl7` |
@@ -447,6 +464,36 @@ services:
 ```
 
 В этом варианте `depends_on: postgres` нужно убрать, потому что сервиса `postgres` в этом compose больше нет.
+
+Если **`app`** не собираете **`build:`** на ВМ, а тянете готовый образ (**как после LAB6**), задайте образ и переменные так же, как в актуальном [`docker-compose.yml`](../docker-compose.yml): **`image: ${ZIL_APP_IMAGE:-...}`** и те же **`environment`** с **`DBHOST`/`DBPORT`/…**. Пример:
+
+```yaml
+services:
+  app:
+    image: ${ZIL_APP_IMAGE:-docker.io/truchekaterina/zil-app:lab7}
+    container_name: zil-app
+    environment:
+      DBHOST: hl12.zil
+      DBPORT: "5437"
+      DBNAME: hl7
+      SCHEMANAME: hl7
+      SPRING_DATASOURCE_USERNAME: hl7
+      SPRING_DATASOURCE_PASSWORD: <ВАШ_ПАРОЛЬ_БД>
+      SPRING_JPA_SHOW_SQL: "false"
+      SERVER_TOMCAT_THREADS_MAX: "50"
+    ports:
+      - "8083:8083"
+    cpus: "${APP_CPUS:-1.0}"
+    mem_limit: "${APP_MEM:-768m}"
+```
+
+На ВМ перед **`docker compose pull app && docker compose up -d`**:
+
+```bash
+export ZIL_APP_IMAGE=docker.io/<ВАШ_DOCKER_ID>/zil-app:lab7
+```
+
+(Подставьте свой Docker ID и тег; при **приватном** репозитории на Hub сначала **`docker login`** на этой же ВМ.)
 
 ### Подход 2. Оставить локальный `postgres` для разработки, но не запускать его в LAB7
 
@@ -845,6 +892,7 @@ spring.datasource.url=jdbc:postgresql://${DBHOST:localhost}:${DBPORT:5437}/${DBN
 - Swagger/API открываются и возвращают данные из удалённой БД.
 - pgAdmin открывается через туннель и показывает нужную БД/схему.
 - В репозиторий не попали реальные пароли, `.env`, приватные ключи и другие секреты.
+- Образ **`app`**: либо **`docker compose build`**, либо **`ZIL_APP_IMAGE`** из **Docker Hub** или **Harbor** — согласовано с LAB6; перед **`pull`** выполнен **`docker login`** к нужному реестру (если образ приватный или нужен обход лимитов Hub).
 
 ---
 
@@ -852,6 +900,7 @@ spring.datasource.url=jdbc:postgresql://${DBHOST:localhost}:${DBPORT:5437}/${DBN
 
 | Переменная | Где задаётся | Для чего |
 | --- | --- | --- |
+| `ZIL_APP_IMAGE` | `.env` на ВМ или `export` | Полный путь к образу основного сервиса в Harbor или Docker Hub (как в LAB6). |
 | `DBHOST` | compose приложения | адрес DB-ноды, например `hl12.zil` |
 | `DBPORT` | compose приложения | внешний порт PostgreSQL на DB-ноде, для этой LAB7 `5437` |
 | `DBNAME` | compose приложения и `POSTGRES_DB` на DB-ноде | имя базы из таблицы курса |
