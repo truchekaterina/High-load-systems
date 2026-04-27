@@ -1,5 +1,11 @@
-# PostgreSQL (официальный postgres:16-alpine с registry-1.docker.io) + Spring Boot.
-# Образ приложения app только из Harbor (см. image ниже); Docker Hub для push своего JAR-образа не используем.
+# PostgreSQL + Spring Boot (два разных реестра — это нормально).
+#
+# • postgres — публичный образ с Docker Hub (docker.io). Обычно тянется без login; при лимитах
+#   «анонимных» pull помогает: docker login -u <логин Hub> (PAT в пароле) — как в ТЗ LAB6.
+# • app — ваш JAR-образ только из Harbor (курс / hl13): ZIL_APP_IMAGE ниже.
+#   Для pull/push app: docker login hlssh.zil.digital:2313  (учётка Harbor, не Hub).
+# Если в задании сказано «при Harbor на hl13 настраивать Docker Hub не нужно» — речь именно
+# про приложение: оно не хранится в Hub, Hub-логин не подставляет образ app в compose.
 #
 # Сервис app по умолчанию: ZIL_APP_IMAGE = hlssh.zil.digital:2313/<проект>/zil-app:lab6
 # (см. LAB8: «На Harbor/registry» — docker login <HARBOR_HOST>:<HARBOR_PORT>).

@@ -238,11 +238,75 @@ sudo usermod -aG docker $USER
 
 На сайте [hub.docker.com](https://hub.docker.com) — **Account Settings → Security → New Access Token**; на ВМ `docker login`, в пароль — токен. Если используешь Hub, задай **`ZIL_APP_IMAGE`** в `.env` на имя из Hub.
 
+**Если Harbor не используешь** (свои образы только на Hub) — иди по **полному пошаговому плану** в [§ 15](#15-лаб-6-образы-только-из-docker-hub-без-harbor-пошагово-для-новичка) ниже.
+
+### 6.4. Отдельный план: тянуть **свой** образ приложения с Docker Hub
+
+Ниже — цельный сценарий, когда **образ `zil-app` ты уже собрала(л) и запушил(а) в свой репозиторий на [Docker Hub](https://hub.docker.com)** (не из Harbor), а на ВМ `docker compose` должен **именно** оттуда делать `pull`. Образ `postgres:16-alpine` по-прежнему с Docker Hub публично; для **приложения** важен твой тег и (для **приватного** репо) логин.
+
+**Шаг 1 — Имя образа (одна строка на всё).**  
+Запиши полсное имя в формате `docker.io/<твой_логин_hub>/<репо>:<тег>`. Пример: `docker.io/janedoe/zil-app:lab6` (префикс `docker.io/` можно опустить, Docker поймёт). Тег `latest` тоже допустим, но для курса лучше **фиксированный** (например `lab6`), чтобы отчёты и воспроизводимость совпадали.
+
+**Шаг 2 — На ПК: образ есть в Hub.**  
+Если ещё нет: в каталоге `zil` с `Dockerfile` (см. LAB8) собрать, затем `docker tag ...` и `docker push` в свой namespace. Команда `docker push` выводит digest — в отчёте можно кратко указать тег, который тянет ВМ.
+
+**Шаг 3 — Токен и логин (только приватный репозиторий).**  
+Hub → **Account Settings → Security → New Access Token** (Read-only достаточно для `pull` на ВМ). На **ВМ** разово:
+
+```bash
+docker login
+# Username: твой логин Hub
+# Password: вставь токен, не пароль от сайта
+```
+
+Публичный репозиторий — `docker login` для `docker compose pull app` **не** нужен; достаточно задать `ZIL_APP_IMAGE` (см. шаг 4).
+
+**Шаг 4 — На ВМ: указать образ без правки `docker-compose.yml` в git.**  
+В каталоге `zil` рядом с compose (файл **не** коммитить с секретами):
+
+```bash
+cd ~/work/Labs_hls/zil
+printf 'ZIL_APP_IMAGE=janedoe/zil-app:lab6\n' > .env
+# или: export ZIL_APP_IMAGE=janedoe/zil-app:lab6
+```
+
+Проверка подстановки:
+
+```bash
+docker compose config | grep -A2 'app:' | head -n 20
+# в блоке app должно быть image: janedoe/zil-app:lab6
+```
+
+**Шаг 5 — Скачать и поднять:**
+
+```bash
+docker compose pull app
+docker compose up -d
+docker compose ps
+```
+
+**Шаг 6 — Убедиться, что в контейнере тот же образ, что планировалось:**
+
+```bash
+docker image inspect $(docker inspect zil-app --format '{{.Config.Image}}') --format '{{.RepoTags}}'
+```
+
+**Краткий чеклист:**
+
+| Действие | Публичный образ на Hub | Приватный образ на Hub |
+|----------|------------------------|------------------------|
+| `ZIL_APP_IMAGE=...` в `.env` на ВМ | Да | Да |
+| `docker login` на ВМ | Нет | Да (токен) |
+| Менять пароли `hl`/`root` | Нет | Нет |
+| `docker login` в Harbor (2313) | Нет (если **всё** на Hub) | Нет (если **всё** на Hub) |
+
+Если курс **требует** обязательный pull из **Harbor**, этот сценарий — только с согласия преподавателя. При смешанной схеме (БД/база — как в курсе, `app` — с Hub) достаточно шагов 4–5 и **не** настраивать `docker login` к `hlssh.zil.digital:2313` **только** для образа приложения.
+
 ---
 
 ## 7. Блок E. Развёртывание `docker compose` в `zil`
 
-На ВМ (образ `app` из Harbor — см. **`ZIL_APP_IMAGE`** в [docker-compose.yml](../docker-compose.yml)):
+На ВМ (образ `app` из **Harbor или Docker Hub** — см. **`ZIL_APP_IMAGE`** в [docker-compose.yml](../docker-compose.yml) и раздел 6.4):
 
 ```bash
 cd ~/work/Labs_hls/zil
@@ -341,7 +405,7 @@ docker exec -it zil-app env | grep -E 'SPRING|SERVER_TOMCAT'
 ## 12. Блок J. Чеклист сдачи (самопроверка)
 
 - ВМ обновлена, вход **по ключу** работает, пароли `hl`/`root` **не** меняла.  
-- Репо склонирован, ветка **lab6-vm-docker-k6**, **Docker** + `docker login` в **Harbor** (`hlssh.zil.digital:2313`) при работе с образом курса.  
+- Репо склонирован, ветка **lab6-vm-docker-k6**, **Docker** + либо `docker login` в **Harbor** (`hlssh.zil.digital:2313`), либо свой образ с **Docker Hub** и `ZIL_APP_IMAGE` — см. [§ 15](#15-лаб-6-образы-только-из-docker-hub-без-harbor-пошагово-для-новичка).  
 - `docker compose` поднимает **app + db**, health выглядит адекватно.  
 - **Swagger** открывается **через туннель** (с корректным портом **8080→8083**).  
 - В compose **CPU/RAM** и **env** (БД, **tomcat threads**, `SPRING_JPA_SHOW_SQL`) **явно** заданы.  
@@ -367,5 +431,169 @@ docker exec -it zil-app env | grep -E 'SPRING|SERVER_TOMCAT'
 ## 14. Контакты в таблице
 
 Преподаватель/оргвопросы — email внизу таблицы; технические — **чат курса** / преподаватель, если нет публичного issue.
+
+---
+
+## 15. ЛАБ 6: образы только из Docker Hub (без Harbor) — пошагово «для новичка»
+
+**Зачем этот раздел:** в [docker-compose.yml](../docker-compose.yml) по умолчанию указан **Harbor** (`hlssh.zil.digital:2313/...`). Если ты **не пушила** образ туда и **не планируешь** с ним связываться, нужно **самой собрать** образ, **залить** его на [Docker Hub](https://hub.docker.com), а на ВМ **сказать** compose, **какой** полный путь к образу использовать — через переменную **`ZIL_APP_IMAGE`**. Нижний образ **Postgres** (`postgres:16-alpine`) уже тянется с публичного Hub и **отдельно выкладывать** его не нужно.
+
+**Схема:** твой ПК (сборка `docker build` → `docker push` на Hub) → твоя ВМ (`docker login` при необходимости → `export ZIL_APP_IMAGE=...` → `docker compose pull app` → `up`).
+
+### 15.1. У тебя должно быть заранее
+
+- **Docker** на ПК: [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/) (или WSL2 + Docker — как в методичке). Проверка в PowerShell: `docker --version` и `docker compose version` — обе команды **без** ошибок.
+- **Тот же** репозиторий `zil` с `Dockerfile` (папка `zil` в корне клона, как в [§ 5.4](#54-клон)).
+- **Логин на Docker Hub** (см. ниже). Имя пользователя Hub **запомни** (ниже — `ТВОЙ_NICK`).
+
+### 15.2. Регистрация на hub.docker.com (если ещё нет аккаунта)
+
+1. Открой в браузере: [https://hub.docker.com/signup](https://hub.docker.com/signup).
+2. Введи **email**, **username** (это твой **Docker ID** — его будешь писать в теге образа), **password** → **Sign up**.
+3. Зайди в почту → **подтверди** email (ссылка от Docker).
+4. Войди: [Sign in](https://hub.docker.com/login).
+
+### 15.3. Создать **репозиторий** под образ (пусть пока пустой)
+
+1. Вверху справа **Sign in** (если не залогинена).
+2. Меню **Repositories** (или [Direct link](https://hub.docker.com/repositories)) → **Create repository**.
+3. **Repository name** — например: `zil-app` (только **латиница**, без пробелов; можно с дефисом).
+4. **Visibility:** **Public** — проще: с ВМ образ скачается **без** обязательного `docker login` (если лимитов хватает). **Private** — тогда на **каждой** машине, где делаешь `pull`, нужен `docker login` (см. § 15.8).
+5. **Create** — страница репозитория откроется; **пока** там «empty» — это нормально, появится после первого `push`.
+
+### 15.4. Токен для входа с компьютера (пароль в `docker login` = не пароль от сайта)
+
+Паролем в командной строке у Docker **часто** считается **токен**, иначе вход может не пускать.
+
+1. В браузере: **иконка профиля** (справа сверху) → **Account settings**.
+2. Слева **Security** → **New access token**.
+3. **Access token description:** например `laptop-lab6`.
+4. **Access permissions:** для push образа — **Read, Write, Delete** (или **Read & Write** — по тому, что даёт UI).
+5. **Generate** → **скопируй токен** (длинная строка). Он показывается **один раз** — сохрани в надёжное место (записной блок, менеджер паролей). **Не** вставляй в `docker-compose.yml` в git.
+
+### 15.5. Сборка образа **на твоём ПК** (Windows, PowerShell)
+
+1. Открой **PowerShell** (лучше «от обычного пользователя»).
+2. Перейди в папку с `Dockerfile` (пример, **подставь свой путь** к клону):
+
+```powershell
+cd C:\Users\1\Desktop\neurohelp\first_laba\zil
+```
+
+3. Собери образ. Вместо `ТВОЙ_NICK` — **твой Docker ID** с сайта; вместо `zil-app` — **имя репозитория**, которое создала в § 15.3:
+
+```powershell
+docker build -t ТВОЙ_NICK/zil-app:lab6 .
+```
+
+4. Проверка, что тег на месте:
+
+```powershell
+docker images ТВОЙ_NICK/zil-app
+```
+
+В колонке `TAG` должна быть `lab6`.
+
+**Если** `docker build` пишет про ошибки — пришли преподавателю **полный** текст; частые причины: не та папка (нет `Dockerfile`), не включён Docker Desktop.
+
+### 15.6. Вход в Docker Hub из PowerShell и **push** образа
+
+1. В **том же** PowerShell:
+
+```powershell
+docker login
+```
+
+2. **Username** — введи `ТВОЙ_NICK` (Docker ID).  
+3. **Password** — **вставь токен** из § 15.4 (не обычный пароль от сайта). Ввод **не** отображается — это нормально, нажми Enter.  
+4. Должно появиться `Login Succeeded`.
+
+5. Золей образ:
+
+```powershell
+docker push ТВОЙ_NICK/zil-app:lab6
+```
+
+6. Подожди окончания загрузки. В браузере обнови страницу репозитория на hub.docker.com — появится тег `lab6`.
+
+**Итоговая строка образа** (её скажем Docker на ВМ):
+
+- Полная: `docker.io/ТВОЙ_NICK/zil-app:lab6`  
+- Коротко часто достаточно: `ТВОЙ_NICK/zil-app:lab6` (по смыслу то же для Hub).
+
+### 15.7. Что **не** делаем
+
+- **Не** выполняй `docker login hlssh.zil.digital:2313` — это Harbor; для **этого** сценария не нужен.  
+- **Не** обязаны менять `docker-compose.yml` в git: хватит **переменной окружения** `ZIL_APP_IMAGE` (см. дальше). Если преподаватель **разрешает** — можно один раз вписать default в ветку в своём репо (осторожно, не публикуй чужим чужой nick).
+
+### 15.8. На **ВМ** (по SSH, bash): подставить **твой** образ
+
+Зайди на ВМ, как в [§ 3.1 и § 3.2](#32-обновить-ос-debianubuntu-подобное):
+
+```bash
+ssh -p 2307 hl@hlssh.zil.digital
+```
+
+(порт `2307` — **твой** из таблицы, если у тебя другой — подставь его).
+
+Дальше **один** из способов.
+
+**Способ A — один раз в текущей сессии (проще для пробы):**
+
+```bash
+cd ~/work/Labs_hls/zil
+export ZIL_APP_IMAGE=docker.io/ТВОЙ_NICK/zil-app:lab6
+docker compose pull app
+docker compose up -d
+```
+
+**Способ B — файл `.env` рядом с `docker-compose.yml`** (чтобы не вводить `export` каждый раз):
+
+```bash
+cd ~/work/Labs_hls/zil
+nano .env
+```
+
+Впиши **одной строкой** (подставь ник; без кавычек вокруг, если в nick нет пробелов):
+
+```text
+ZIL_APP_IMAGE=docker.io/ТВОЙ_NICK/zil-app:lab6
+```
+
+Сохрани: `Ctrl+O`, Enter, выход `Ctrl+X`.  
+Потом: `docker compose pull app` и `docker compose up -d`.
+
+**Важно:** в `.env` **не** клади пароли БД и **не** коммить его с секретами. Имя образа `ТВОЙ_NICK/...` — не секрет, но курс могут просить не коммитить `.env` в git — смотри `.gitignore`.
+
+**Если репозиторий на Hub [Private]:** на **ВМ** сначала `docker login` (username = Docker ID, password = **токен**), иначе `pull` напишет `unauthorized` / `denied`.
+
+### 15.9. Проверка на ВМ
+
+```bash
+cd ~/work/Labs_hls/zil
+docker compose ps
+docker compose logs app --tail 80
+```
+
+- В `ps` у `app` должен быть **Up**.  
+- В логах — старт Spring Boot **без** немедленного crash.
+
+Swagger на своём ПК — через **туннель** [§ 8](#8-блок-f-http-через-ssh-туннель-с-твоего-пк) (порт с приложением у нас **8083** на ВМ, на ПК **8080** в туннеле).
+
+### 15.10. Что делать, если «не тянет» образ
+
+| Сообщение / симптом | Что сделать |
+| ------------------- | ----------- |
+| `toomanyrequests` / `rate limit` | На ВМ: `docker login` под своим Hub-аккаунтом, повтори `docker compose pull app`. |
+| `pull access denied` / `unauthorized` | Проверь `ZIL_APP_IMAGE` (опечатка в nick или теге). Для private: `docker login` на **этой** ВМ. |
+| `manifest unknown` | На Hub **нет** такого тега — с ПК сделай `docker push` ещё раз и проверь в браузере, что тег `lab6` виден. |
+| Контейнер `app` падает сразу | См. `docker compose logs app`; не путай с **не тем** образом (другой тег, старая версия), не путай с **БД** (нужен поднятый `postgres` из того же `docker compose up`). |
+
+### 15.11. Соотношение с формулировкой ТЗ (Harbor / Hub)
+
+- В курсе часто: «если используется Harbor на **hl13**, **не** требуется настраивать **Docker Hub** для **именно** доступа **к app-образу**». У тебя app — **только** с твоего **Docker ID**; Hub для этого как раз **нужен** (твой `docker login` к **hub.docker.com** — не «Harbor-на-hl13»).  
+- Образ **postgres** **по-прежнему** из публичного `postgres:16-alpine` в `docker-compose.yml` — отдельно на свой Hub **выкладывать** его не требуется.
+
+---
 
 *Документ сделан для личного обучения к защите: формулировки несут объяснительный характер; точные критерии — у методиста.*
