@@ -1,70 +1,4 @@
-# PostgreSQL + Spring Boot + k6 — цепочка лаб (LAB6 → LAB7 → LAB8).
-#
-# ═══════════════════════════════════════════════════════════════════════════════
-# ОБРАЗ APP (Docker Hub по умолчанию, опционально Harbor)
-# ═══════════════════════════════════════════════════════════════════════════════
-# Переменная ZIL_APP_IMAGE задаёт образ сервиса app (без сборки из Dockerfile в compose).
-#
-# • Docker Hub (по умолчанию для этой ветки):
-#     docker login -u <DOCKER_ID>
-#     export ZIL_APP_IMAGE=docker.io/<DOCKER_ID>/zil-app:lab7
-#   Если не задавать — подставится docker.io/truchekaterina/zil-app:lab7
-#
-# • Harbor (как в ветке lab6-vm-docker-k6):
-#     docker login hlssh.zil.digital:2313
-#     export ZIL_APP_IMAGE=hlssh.zil.digital:2313/truchekaterina/zil-app:lab6
-#
-# Образ postgres тянется с Docker Hub; при лимитах анонимных pull — docker login.
-#
-# ═══════════════════════════════════════════════════════════════════════════════
-# РЕЖИМЫ БД
-# ═══════════════════════════════════════════════════════════════════════════════
-# LAB7 (удалённая БД, как у коллеги): только app, без локального postgres
-#     docker compose up -d
-#   В app подставляются DBHOST/DBPORT/DBNAME/… (см. environment ниже) — JDBC из
-#   application.properties через ${DBHOST}…
-#
-# Локальный postgres (IDE, отладка, стенд «postgres + app»):
-#     docker compose --profile local-db up -d postgres
-#   Полный стек app+postgres из open-swagger.ps1 — там в PowerShell задаются
-#   DBHOST=postgres, DBPORT=5432, DBNAME=car_rental, SCHEMANAME=public и учётка rental.
-#
-# ═══════════════════════════════════════════════════════════════════════════════
-# CPU/RAM (LAB6 k6, измерения)
-# ═══════════════════════════════════════════════════════════════════════════════
-#   set APP_CPUS=0.5
-#   set APP_MEM=768m
-#   docker compose up -d --force-recreate --no-deps app
-# Проверка: docker inspect zil-app --format '{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}'
-# На обычном docker compose без Swarm секция deploy иногда не задаёт лимиты — смотрите inspect.
-#
-# ═══════════════════════════════════════════════════════════════════════════════
-# k6 (профиль perf)
-# ═══════════════════════════════════════════════════════════════════════════════
-#   docker compose --profile perf run --rm k6 run /scripts/load.js
-#
-# Swagger: http://127.0.0.1:8083/swagger-ui/index.html
-
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: zil-postgres
-    restart: unless-stopped
-    profiles: ["local-db"]
-    environment:
-      POSTGRES_USER: rental
-      POSTGRES_PASSWORD: rental_pass
-      POSTGRES_DB: car_rental
-    ports:
-      - "5433:5432"
-    volumes:
-      - zil_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rental -d car_rental"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   app:
     image: ${ZIL_APP_IMAGE:-docker.io/truchekaterina/zil-app:lab7}
     container_name: zil-app
@@ -88,17 +22,3 @@ services:
         limits:
           cpus: "${APP_CPUS:-1.0}"
           memory: ${APP_MEM:-1024M}
-
-  k6:
-    image: grafana/k6:0.52.0
-    container_name: zil-k6
-    profiles: ["perf"]
-    depends_on:
-      app:
-        condition: service_started
-    working_dir: /scripts
-    volumes:
-      - ./k6:/scripts
-
-volumes:
-  zil_pgdata:
