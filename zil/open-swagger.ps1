@@ -1,12 +1,20 @@
-# Поднять postgres + app (сборка JAR в Docker по zil/Dockerfile) и открыть Swagger в браузере.
-# Первая сборка может идти несколько минут (Gradle внутри образа). При обрыве демона Docker — перезапустите Docker Desktop и повторите.
+# Поднять postgres + app (образ app из Docker Hub / ZIL_APP_IMAGE, см. docker-compose.yml) и открыть Swagger.
 # Запуск:  cd zil  ;  .\open-swagger.ps1
+#
+# Для локального стека задаём DBHOST=postgres (имя сервиса в сети compose), как раньше JDBC на postgres:5432 в LAB6.
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-Write-Host "docker compose up --build -d (postgres + app)..." -ForegroundColor Cyan
-docker compose up --build -d
+$env:DBHOST = "postgres"
+$env:DBPORT = "5432"
+$env:DBNAME = "car_rental"
+$env:SCHEMANAME = "public"
+$env:SPRING_DATASOURCE_USERNAME = "rental"
+$env:SPRING_DATASOURCE_PASSWORD = "rental_pass"
+
+Write-Host "docker compose --profile local-db up -d (pull image if needed, postgres + app)..." -ForegroundColor Cyan
+docker compose --profile local-db up -d
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Waiting for http://127.0.0.1:8083/cars (up to 90s)..." -ForegroundColor Cyan
