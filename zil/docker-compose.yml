@@ -4,7 +4,7 @@
 # Только БД под IDE / bootRun: docker compose up -d postgres (localhost:5433).
 #
 # IntelliJ / хост с локальной БД: jdbc:postgresql://localhost:5433/car_rental
-# LAB7 app: удаленная БД через env DBHOST/DBPORT/DBNAME (hl12.zil:5437/hl7)
+# LAB7 app: удаленная БД через env DBHOST/DBPORT/DBNAME (hl12.zil:5433/hl7; стек lab7-db-tospe)
 #
 # LAB6: лимиты CPU/RAM и смесь нагрузки меняй через env на хосте перед up:
 #   export APP_CPUS=0.5
@@ -38,7 +38,7 @@ services:
     container_name: zil-app
     environment:
       DBHOST: hl12.zil
-      DBPORT: "5437"
+      DBPORT: "5433"
       DBNAME: hl7
       SCHEMANAME: hl7
       SPRING_DATASOURCE_USERNAME: hl7
