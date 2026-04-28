@@ -20,6 +20,7 @@ LAB5: заливка тестовых данных в REST API перед k6.
 from __future__ import annotations
 
 import argparse
+import os
 import random
 import sys
 import uuid
@@ -32,7 +33,11 @@ from faker import Faker
 
 DEFAULT_BASE = "http://localhost:8083"
 DEFAULT_COUNT = 500
-TIMEOUT = 10
+# После больших прогонов k6 очистка БД может занимать >10 с — см. SEED_HTTP_TIMEOUT.
+try:
+    TIMEOUT = max(10, min(3600, int(os.environ.get("SEED_HTTP_TIMEOUT", "180"))))
+except ValueError:
+    TIMEOUT = 180
 
 
 def fail_response(r: requests.Response, context: str) -> None:

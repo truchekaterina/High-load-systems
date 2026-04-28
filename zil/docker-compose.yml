@@ -66,6 +66,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      # JVM heap: без этого на узких ВМ возможен OOM при тяжёлой нагрузке k6 / больших таблицах.
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx512m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/car_rental
       SPRING_DATASOURCE_USERNAME: rental
       SPRING_DATASOURCE_PASSWORD: rental_pass
