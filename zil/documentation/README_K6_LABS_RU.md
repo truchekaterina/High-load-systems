@@ -60,7 +60,7 @@ LAB7 **не меняет** формат отчётов k6 и скриптов LA
 | Отчёты | Папка **`reports-lab8-s2s`**, имена вроде **`s2s_cpu05_mix05.json`**, **`s2s_cpu10_availability.json`** (только **0.5** и **1.0** CPU по ТЗ). |
 | Графики | **`plot_lab8_reports.py`** → основной результат **`lab8_latency_vs_cpu.png`** (как LAB6: три панели по смесям **5/95**, **50/50**, **95/5**, по оси X только CPU **0.5 и 1.0**, **`post_ms`** / **`get_ms`**). Если есть **`s2s_cpu*_availability.json`**, дополнительно **`lab8_availability_cpu_avg_p95.png`**. |
 
-Образы **`app`** и **`additional`**: как в LAB6/LAB8-доке — **Harbor или Docker Hub**, переменные **`ZIL_APP_IMAGE`** / отдельный тег для additional.
+Образы **`app`** и **`additional`**: **Harbor или Docker Hub**, переменные **`ZIL_APP_IMAGE`** и **`ZIL_ADDITIONAL_IMAGE`** (см. [LAB8_PLAN_RU.md](LAB8_PLAN_RU.md)).
 
 Подробно — [LAB8_PLAN_RU.md](LAB8_PLAN_RU.md).
 

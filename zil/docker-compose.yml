@@ -10,6 +10,10 @@
 #   export APP_CPUS=0.5
 #   export APP_MEM=768m
 #   docker compose up -d --force-recreate --no-deps app
+# LAB8: сервис additional (8084) — образ собирают из отдельного репозитория, см. ZIL_ADDITIONAL_IMAGE ниже.
+# Лимит CPU для additional:
+#   export ADDITIONAL_CPUS=0.5
+#   docker compose up -d additional
 # Проверка: docker inspect zil-app --format '{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}'
 # 0.5 CPU -> 500000000 наносек, 1.0 -> 1000000000, 1.5 -> 1500000000, 2.0 -> 2000000000
 
@@ -35,6 +39,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: ${ZIL_APP_IMAGE:-zil-app:local}
     container_name: zil-app
     environment:
       DBHOST: hl12.zil
@@ -53,6 +58,20 @@ services:
     # всегда 1 CPU (1000000000 нс). Подставляется из env хоста: export APP_CPUS=0.5 перед up.
     cpus: "${APP_CPUS:-1.0}"
     mem_limit: "${APP_MEM:-768m}"
+
+  # LAB8 Additional: образ из репозитория github.com/truchekaterina/zil-additional-service
+  # (сборка там или в CI → push в Harbor/Docker Hub; здесь задаётся тег переменной ZIL_ADDITIONAL_IMAGE).
+  additional:
+    image: ${ZIL_ADDITIONAL_IMAGE:-zil-additional:local}
+    container_name: zil-additional
+    environment:
+      RENTAL_CRUD_BASE_URL: http://app:8083
+    ports:
+      - "8084:8084"
+    depends_on:
+      - app
+    cpus: "${ADDITIONAL_CPUS:-1.0}"
+    mem_limit: "${ADDITIONAL_MEM:-384m}"
 
 volumes:
   zil_pgdata:
