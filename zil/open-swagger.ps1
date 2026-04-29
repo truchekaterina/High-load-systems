@@ -5,8 +5,8 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-Write-Host "docker compose up --build -d (postgres + app)..." -ForegroundColor Cyan
-docker compose up --build -d
+Write-Host "docker compose --profile local-db up --build -d (postgres + app)..." -ForegroundColor Cyan
+docker compose --profile local-db up --build -d
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Waiting for http://127.0.0.1:8083/cars (up to 90s)..." -ForegroundColor Cyan

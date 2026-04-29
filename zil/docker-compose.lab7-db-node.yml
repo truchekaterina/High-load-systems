@@ -1,0 +1,49 @@
+# LAB7 — стек PostgreSQL + pgAdmin для узла БД (например hl12.zil).
+# Поднимать на той ВМ, где крутится контейнер с БД, а не на ВМ приложения (hl07).
+#
+# Пример:
+#   docker compose -f docker-compose.lab7-db-node.yml up -d
+#
+# Порты и имена БД возьмите из таблицы курса; для приложения на hl07 задайте в env:
+#   DBHOST=hl12.zil  DBPORT=<внешний порт Postgres с этой машины, часто 5433>
+#   DBNAME / SCHEMANAME — как в строке таблицы (например hl7).
+#
+# Переменные можно положить в .env рядом с этим файлом (файл с секретами не коммитьте).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lab7-postgres
+    command: ["postgres", "-c", "max_connections=1000"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rental}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rental_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-car_rental}
+    ports:
+      - "${POSTGRES_PUBLISH_PORT:-5433}:5432"
+    volumes:
+      - lab7_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rental} -d ${POSTGRES_DB:-car_rental}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: lab7-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin@local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-change-me}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "${PGADMIN_PUBLISH_PORT:-5051}:80"
+    volumes:
+      - lab7_pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  lab7_pgdata:
+  lab7_pgadmin_data:

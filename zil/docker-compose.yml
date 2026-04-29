@@ -1,24 +1,29 @@
-# LAB3: PostgreSQL + Spring Boot. Сборка app: zil/Dockerfile (bootJar внутри контейнера).
-# Из папки zil: docker compose up --build -d  (или open-swagger.ps1 / open-swagger.cmd)
+# LAB3+ : PostgreSQL (опционально) + Spring Boot. Сборка app: zil/Dockerfile (bootJar внутри контейнера).
 # LAB6 / Swagger: http://127.0.0.1:8083/swagger-ui/index.html
-# Только БД под IDE / bootRun: docker compose up -d postgres (localhost:5433).
 #
-# IntelliJ / хост с локальной БД: jdbc:postgresql://localhost:5433/car_rental
-# LAB7 app: удаленная БД через env DBHOST/DBPORT/DBNAME (hl12.zil:5437/hl7)
+# Нужен Docker Compose **v2.20+** (атрибут depends_on.required: false).
+
+# Режим A — локально: Postgres в Docker + app (+ LAB8 additional). Профиль **local-db** включает postgres.
+#   docker compose --profile local-db up --build -d
+#   Только БД под IDE / bootRun: docker compose --profile local-db up -d postgres  (JDBC с хоста: localhost:5433/car_rental)
+#   open-swagger.ps1 / open-swagger.cmd — то же с профилем local-db.
 #
-# LAB6: лимиты CPU/RAM и смесь нагрузки меняй через env на хосте перед up:
-#   export APP_CPUS=0.5
-#   export APP_MEM=768m
-#   docker compose up -d --force-recreate --no-deps app
-# LAB8: сервис additional (8084) — образ собирают из отдельного репозитория, см. ZIL_ADDITIONAL_IMAGE ниже.
-# Лимит CPU для additional:
-#   export ADDITIONAL_CPUS=0.5
-#   docker compose up -d additional
-# Проверка: docker inspect zil-app --format '{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}'
-# 0.5 CPU -> 500000000 наносек, 1.0 -> 1000000000, 1.5 -> 1500000000, 2.0 -> 2000000000
+# Режим B — ВМ приложения (hl07): удалённая БД на hl12, контейнер postgres не нужен.
+#   1) Скопируйте и при необходимости отредактируйте registry-tags-lab8-hl7.env (DBHOST, DBPORT=5433, DBNAME, ZIL_* , пароль БД).
+#   2) На ВМ: docker login hl13.zil:8888 (insecure-registries в /etc/docker/daemon.json при необходимости)
+#   3) set -a && . ./registry-tags-lab8-hl7.env && set +a && docker compose pull && docker compose up -d --force-recreate
+#   Либо: bash scripts/vm2307-deploy-lab8.sh
+#
+# LAB6: лимиты CPU/RAM на хосте перед up: export APP_CPUS=0.5 APP_MEM=768m
+# LAB8: ZIL_ADDITIONAL_IMAGE — образ additional (Harbor/Docker Hub). export ADDITIONAL_CPUS=0.5 при необходимости.
+# Проверка лимитов: docker inspect zil-app --format '{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}'
+#
+# LAB7 (узел БД hl12): PostgreSQL + pgAdmin и max_connections=1000 — отдельный файл
+#   docker-compose.lab7-db-node.yml (запуск на ВМ БД, не на ВМ приложения).
 
 services:
   postgres:
+    profiles: ["local-db"]
     image: postgres:16-alpine
     container_name: zil-postgres
     environment:
@@ -42,17 +47,22 @@ services:
     image: ${ZIL_APP_IMAGE:-zil-app:local}
     container_name: zil-app
     environment:
-      DBHOST: hl12.zil
-      DBPORT: "5437"
-      DBNAME: hl7
-      SCHEMANAME: hl7
-      SPRING_DATASOURCE_USERNAME: hl7
-      SPRING_DATASOURCE_PASSWORD: hl7
+      # Локально (профиль local-db): DBHOST=postgres, DBPORT=5432. ВМ → hl12.zil и 5433 (см. registry-tags-lab8-hl7.env).
+      DBHOST: ${DBHOST:-postgres}
+      DBPORT: ${DBPORT:-5432}
+      DBNAME: ${DBNAME:-car_rental}
+      SCHEMANAME: ${SCHEMANAME:-hl7}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-rental}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-rental_pass}
       SPRING_JPA_SHOW_SQL: "false"
       # server.tomcat.threads.max (Spring Boot 3+; см. внешнюю конфигурацию)
       SERVER_TOMCAT_THREADS_MAX: "50"
     ports:
       - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
     # Лимиты CPU/RAM: cpus + mem_limit задают HostConfig на обычном `docker compose up` (без Swarm).
     # Секция `deploy.resources` в части окружений не применяется к `compose up` — тогда в inspect
     # всегда 1 CPU (1000000000 нс). Подставляется из env хоста: export APP_CPUS=0.5 перед up.
