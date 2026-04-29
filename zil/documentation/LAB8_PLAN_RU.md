@@ -45,3 +45,7 @@ export ADDITIONAL_CPUS=0.5
 
 Подробнее по k6 и графикам — **[README_K6_LABS_RU.md](README_K6_LABS_RU.md)** (раздел LAB8).
 
+## Образы в Docker Hub (фиксация для отчётности)
+
+На момент сдачи образы **`rinakt/zil-app:hl7-latest`** и **`rinakt/zil-additional:hl7-latest`** перечислены в **`[registry-tags-lab8-hl7.env](../registry-tags-lab8-hl7.env)`**. Дубликат Harbor — по методичке, теги из своего проекта там же указывайте в таблице курса.
+
