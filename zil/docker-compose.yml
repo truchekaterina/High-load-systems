@@ -65,7 +65,8 @@ services:
     image: ${ZIL_ADDITIONAL_IMAGE:-zil-additional:local}
     container_name: zil-additional
     environment:
-      RENTAL_CRUD_BASE_URL: http://app:8083
+      # Совпадает с zil-additional-service: main-service.base-url (приоритет MAIN_SERVICE_BASE_URL, иначе см. application.properties).
+      MAIN_SERVICE_BASE_URL: http://app:8083
     ports:
       - "8084:8084"
     depends_on:
