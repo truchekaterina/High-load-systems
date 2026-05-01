@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-LAB5: заливка тестовых данных в REST API перед k6.
+Заливка тестовых данных в REST API через HTTP.
 
-Идея: приложение ничего не знает о Python — скрипт вызывает те же URL, что и Postman
+Идея: приложение ничего не знает о Python — скрипт вызывает те же URL, что и клиент нагрузочных тестов
 (POST /clients, /cars, /rents). Faker придумывает правдоподобный текст, числа/UUID
 остаются уникальными за счёт шаблонов.
 
-Требования: pip install -r requirements.txt  (requests, faker).
+Требования: pip install -r requirements.txt (requests, faker).
 
 Перед заливкой (если не --no-clear) вызывается POST /dev/clear?clear=...
 (по умолчанию all). Флаги: --only-clear, --clear, см. --help.
 
-Типичный порядок: поднять API + БД -> python seed.py -> k6 run load.js
+Типичный порядок: поднять API + доступную БД -> python seed.py -> k6 run load.js
 
-Документация: zil/documentation/LAB5_EXPLAINED_RU.md, LAB5_DEFENSE_AND_CODE_RU.md
+См. REST: POST /dev/clear, POST /clients, POST /cars, POST /rents в Swagger (раздел availability/dev — по коду контроллеров).
 """
 
 from __future__ import annotations

@@ -25,7 +25,7 @@ git checkout lab8-ads
 git pull origin lab8-ads
 
 docker compose pull app additional
-# Явно app + additional: postgres с профилем local-db не трогаем; JDBC — из registry-tags-lab8-hl7.env.
+# Явно app + additional; JDBC и теги образов — из registry-tags-lab8-hl7.env (локального postgres в compose нет).
 docker compose up -d --force-recreate app additional
 
 echo "--- smoke (на ВМ, localhost) ---"

@@ -18,7 +18,7 @@
 
 ## Перед запуском (один раз проверьте)
 
-1. **Docker Desktop** установлен и запущен (в трее иконка кита, статус вроде «Engine running»). Без Docker способ с `docker compose` ниже **не сработает** — тогда поднимайте PostgreSQL отдельно и запускайте приложение через **`gradlew bootRun`** (см. раздел «Без Docker»).
+1. **Docker Desktop** установлен и запущен (в трее иконка кита, статус вроде «Engine running»). Без Docker способ с `docker compose` ниже **не сработает** — тогда используйте **`gradlew bootRun`**, предварительно задав переменные JDBC на **доступный** PostgreSQL (см. раздел «Без Docker»).
 
 2. Папка проекта на диске, например:  
    `C:\Users\...\Desktop\neurohelp\first_laba\zil`
@@ -41,9 +41,9 @@
 
 Дважды щёлкните по файлу **`open-swagger.cmd`**.
 
-Скрипт выполнит:
+Скрипт ожидает рядом с собой файл **`registry-tags-lab8-hl7.env`** (JDBC к удалённой БД, теги образов). Он выполнит:
 
-- `docker compose --profile local-db up --build -d` (PostgreSQL + сборка и запуск Spring Boot в контейнере);
+- `docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional` (локального Postgres в compose нет);
 - ожидание ответа API до ~90 секунд;
 - открытие браузера по адресу Swagger.
 
@@ -93,7 +93,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ```powershell
 cd C:\Users\1\Desktop\neurohelp\first_laba\zil
-docker compose --profile local-db up --build -d
+docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional
 ```
 
 Подождите, пока контейнеры станут **Up** (проверка: `docker compose ps`). Затем в браузере:
@@ -163,7 +163,7 @@ http://127.0.0.1:8083/swagger-ui/index.html
 
 ### 4) Готовые ID из тестовых данных (Flyway `V2__seed_data`)
 
-Эти UUID совпадают с **`zil/documentation/postman_collection.json`** (переменные `carId`, `clientId`, `rentId`). Удобно копировать в Swagger.
+Эти UUID совпадают со стартовым сидом **`V2__seed_data.sql`** в репозитории (удобно копировать в Swagger).
 
 | Сущность | Поле | Значение (пример) |
 |----------|------|--------------------|
@@ -276,7 +276,7 @@ http://127.0.0.1:8083/swagger-ui/index.html
 **Счётчик — `GET /rents/availability/count`**
 
 1. **Try it out**.
-2. Обязательно: **`model`**, **`city`**. **Опционально** **`date`** (если не укажете — смысл `count` другой, см. `FEATURE_AVAILABILITY_COUNT_RU.md`).
+2. Обязательно: **`model`**, **`city`**. **Опционально** **`date`** (если параметр **`date`** не указан, в **`count`** возвращается число машин модели в городе **без** проверки аренд на день; если **`date`** указан — считаются только **свободные** в этот день).
 
 | Параметр | С датой (сколько **свободно** в этот день) | Без `date` (сколько **всего** таких машин в городе) |
 |----------|---------------------------------------------|---------------------------------------------------|
@@ -308,7 +308,7 @@ http://127.0.0.1:8083/swagger-ui/index.html
 
 Если вы **не** используете контейнер `app`, а запускаете Spring с компьютера:
 
-1. Должен быть доступен **PostgreSQL** с базой как в `application.properties` (часто это `docker compose --profile local-db up -d postgres` — только БД на порту **5433**).
+1. Должен быть доступен **PostgreSQL** (удалённый узел или ваш собственный инстанс). Задайте **`DBHOST`**, **`DBPORT`**, **`DBNAME`**, **`SCHEMANAME`**, **`SPRING_DATASOURCE_*`** в среде IDE / в shell так же, как в **`registry-tags-lab8-hl7.env`** для Docker.
 
 2. В папке `zil`:
 
@@ -327,7 +327,7 @@ http://127.0.0.1:8083/swagger-ui/index.html
 
 | Симптом | Что сделать |
 |---------|-------------|
-| Браузер пишет «не удаётся подключиться» | Docker не запущен или контейнеры не поднялись. Выполните `docker compose ps`, при необходимости `docker compose --profile local-db up --build -d` из папки `zil`. |
+| Браузер пишет «не удаётся подключиться» | Docker не запущен или контейнеры не поднялись. Выполните `docker compose ps`, при необходимости `docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional` из папки `zil`. |
 | Долго висит сборка в Docker | Первая сборка нормально идёт минуты. Если обрыв с ошибкой вроде **rpc / EOF** — перезапустите **Docker Desktop**, увеличьте память в настройках Docker, повторите команду. |
 | Порт 8083 занят | Другой процесс или старый контейнер. `docker compose down` в `zil` или смена `server.port` в `application.properties` / остановка лишнего процесса. |
 | Swagger открылся, но запросы к API падают | Проверьте, что приложение стартовало без ошибок БД; для Docker: `docker compose logs app`. |

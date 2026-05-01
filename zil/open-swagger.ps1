@@ -1,12 +1,19 @@
-# Поднять postgres + app (сборка JAR в Docker по zil/Dockerfile) и открыть Swagger в браузере.
-# Первая сборка может идти несколько минут (Gradle внутри образа). При обрыве демона Docker — перезапустите Docker Desktop и повторите.
+# Поднимает app + additional в Docker против удалённой БД (hl12 через registry-tags-lab8-hl7.env) и открывает Swagger в браузере.
+# Первая сборка может занять несколько минут (Gradle внутри Dockerfile). Если Docker демон падает — перезапустите Docker Desktop.
 # Запуск:  cd zil  ;  .\open-swagger.ps1
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-Write-Host "docker compose --profile local-db up --build -d (postgres + app)..." -ForegroundColor Cyan
-docker compose --profile local-db up --build -d
+$registryEnv = Join-Path $PSScriptRoot "registry-tags-lab8-hl7.env"
+if (-not (Test-Path $registryEnv)) {
+    Write-Host "Не найден $registryEnv — скопируйте шаблон с ВМ или из репозитория и укажите DBHOST/JDBC-пароли." -ForegroundColor Red
+    Write-Host "Локальный PostgreSQL в этом проекте не используется." -ForegroundColor Yellow
+    exit 1
+}
+
+Write-Host "docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional..." -ForegroundColor Cyan
+docker compose --env-file $registryEnv up --build -d app additional
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Waiting for http://127.0.0.1:8083/cars (up to 90s)..." -ForegroundColor Cyan
