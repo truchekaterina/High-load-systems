@@ -18,7 +18,7 @@ docker compose up -d
 
 Образ можно собрать вручную рядом с клоном: `docker build -t zil-additional:local ./zil-additional-service` и тогда оставить по умолчанию **`zil-additional:local`** без `pull`.
 
-Основной CRUD (**`app`**): как LAB7 — **`zil/Dockerfile`**, переменная **`ZIL_APP_IMAGE`** при необходимости.
+Основной CRUD (**`app`**): в **`registry-tags-lab8-hl7.env`** по умолчанию образ с **Docker Hub** (`docker.io/rinakt/zil-app:hl7-latest`); сборка только из локального **`Dockerfile`** нужна только если хотите свой образ без Hub.
 
 ## CPU (0.5 и 1.0)
 
@@ -47,5 +47,5 @@ export ADDITIONAL_CPUS=0.5
 
 ## Образы в Docker Hub (фиксация для отчётности)
 
-На момент сдачи образы **`rinakt/zil-app:hl7-latest`** и **`rinakt/zil-additional:hl7-latest`** перечислены в **`[registry-tags-lab8-hl7.env](../registry-tags-lab8-hl7.env)`**. Дубликат Harbor — по методичке, теги из своего проекта там же указывайте в таблице курса.
+На момент сдачи строки образов задаются в **`[registry-tags-lab8-hl7.env](../registry-tags-lab8-hl7.env)`**: основной сервис с **Docker Hub** (`rinakt/zil-app:hl7-latest` по умолчанию), дополнительный — **Harbor** (`katya/zil-additional-service:lab8`). Уточните у методиста, если нужны другие теги.
 

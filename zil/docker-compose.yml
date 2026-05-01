@@ -1,11 +1,12 @@
-# Spring Boot (app) + LAB8 additional. Сборка app: zil/Dockerfile (bootJar в контейнере).
+# Spring Boot (app) + LAB8 additional. **app** — образ с Docker Hub; **additional** — с Harbor.
 # LAB6 Swagger: http://127.0.0.1:8083/swagger-ui/index.html
 #
 # Локального PostgreSQL в этом проекте нет: только удалённая БД (узел hl12 и т.п.).
 #
-# Перед `up` нужны JDBC и теги образов (обычно из registry-tags-lab8-hl7.env):
+# Перед `up`: `registry-tags-lab8-hl7.env` (JDBC + теги). Для pull **additional** нужен `docker login hl13.zil:8888`.
 #   docker compose --env-file registry-tags-lab8-hl7.env pull app additional
-#   docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional
+#   docker compose --env-file registry-tags-lab8-hl7.env up -d app additional
+# Сборка **app** из репозитория: добавьте в сервис `app` блок `build:` (см. Dockerfile) — не используется при Hub-образе.
 #
 # ВМ приложения (hl07): bash scripts/vm2307-deploy-lab8.sh — подтягивает тот же env.
 #
@@ -20,10 +21,7 @@
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ${ZIL_APP_IMAGE:-zil-app:local}
+    image: ${ZIL_APP_IMAGE:-docker.io/rinakt/zil-app:hl7-latest}
     container_name: zil-app
     environment:
       DBHOST: ${DBHOST:?Set DBHOST in env or registry-tags-lab8-hl7.env}

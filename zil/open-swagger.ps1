@@ -1,5 +1,5 @@
 # Поднимает app + additional в Docker против удалённой БД (hl12 через registry-tags-lab8-hl7.env) и открывает Swagger в браузере.
-# Первая сборка может занять несколько минут (Gradle внутри Dockerfile). Если Docker демон падает — перезапустите Docker Desktop.
+# Первый pull образов может занять минуты. Если Docker демон падает — перезапустите Docker Desktop.
 # Запуск:  cd zil  ;  .\open-swagger.ps1
 
 $ErrorActionPreference = "Stop"
@@ -12,8 +12,9 @@ if (-not (Test-Path $registryEnv)) {
     exit 1
 }
 
-Write-Host "docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional..." -ForegroundColor Cyan
-docker compose --env-file $registryEnv up --build -d app additional
+Write-Host "docker compose pull + up app (Docker Hub), additional (Harbor)..." -ForegroundColor Cyan
+docker compose --env-file $registryEnv pull app additional
+docker compose --env-file $registryEnv up -d app additional
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Waiting for http://127.0.0.1:8083/cars (up to 90s)..." -ForegroundColor Cyan

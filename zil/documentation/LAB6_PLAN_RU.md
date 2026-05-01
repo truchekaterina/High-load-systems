@@ -58,7 +58,7 @@
 
 1. Ты **заходишь на свою ВМ** по SSH, **обновляешь ОС**, настраиваешь **вход по ключу**.
 2. На ВМ **стоит git**, **клонирован** твой репозиторий, **Docker** установлен, ты **залогинена в Docker Hub** (`docker login`).
-3. В каталоге `**zil`** команда **`docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional`** поднимает **Spring Boot + LAB8 additional** с JDBC к удалённому Postgres (как в актуальном репо).
+3. В каталоге `**zil`** команда **`docker compose --env-file registry-tags-lab8-hl7.env pull app additional`** и **`docker compose --env-file registry-tags-lab8-hl7.env up -d app additional`** поднимает **Spring Boot** (образ с Docker Hub) + **LAB8 additional** (Harbor) с JDBC к удалённому Postgres.
 4. С **своего ПК** ты открываешь **SSH-туннель** и в браузере проверяешь **Swagger** и работу API.
 5. В `docker-compose.yml` **явно** прописаны **CPU/RAM** для `app` и **переменные окружения** для: URL БД, логина/пароля БД, **Tomcat max threads**, **отключения `spring.jpa.show-sql`**.
 6. Ты снимаешь **зависимость: среднее время ответа от выставленного лимита CPU** при **постоянном VU** для трёх смесей (5/95, 50/50, 95/5) и **двух схем**: нагрузка **с домашнего ПК** на ВМ и **с ВМ k6** на **твою** ВМ (или на ту же, как скажет преподаватель).
@@ -250,7 +250,8 @@ docker login
 
 ```bash
 cd ~/work/Labs_hls/zil
-docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional
+docker compose --env-file registry-tags-lab8-hl7.env pull app additional
+docker compose --env-file registry-tags-lab8-hl7.env up -d app additional
 docker compose ps
 docker compose logs app --tail 80
 ```
@@ -281,7 +282,7 @@ ssh -p 2307 -L 8080:127.0.0.1:8083 hl@hlssh.zil.digital
 
 ## 9. Блок G. Swagger (если нет — добавить)
 
-Если на работающем приложении **нет** OpenAPI / Swagger, в **ветке `lab6-vm-docker-k6`** в `**zil/build.gradle**` добавляют зависимость **springdoc** (версия под Spring Boot 4 — как в [springdoc v4](https://springdoc.org/)) и **коммитят** → `git push` → на ВМ `git pull` → `docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional`.
+Если на работающем приложении **нет** OpenAPI / Swagger, в **ветке `lab6-vm-docker-k6`** в `**zil/build.gradle**` добавляют зависимость **springdoc** (версия под Spring Boot 4 — как в [springdoc v4](https://springdoc.org/)) и **коммитят** → `git push` → на ВМ `git pull` → перезапуск через `docker compose --env-file registry-tags-lab8-hl7.env pull app additional` и `docker compose --env-file registry-tags-lab8-hl7.env up -d app additional`.
 
 Потом в браузере (через туннель) открывают, например:
 
@@ -307,7 +308,8 @@ ssh -p 2307 -L 8080:127.0.0.1:8083 hl@hlssh.zil.digital
 **Мини-чеклист после правок:**
 
 ```bash
-docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional
+docker compose --env-file registry-tags-lab8-hl7.env pull app additional
+docker compose --env-file registry-tags-lab8-hl7.env up -d app additional
 docker inspect zil-app --format '{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}'
 # и смотри env внутри контейнера:
 docker exec -it zil-app env | grep -E 'SPRING|SERVER_TOMCAT'

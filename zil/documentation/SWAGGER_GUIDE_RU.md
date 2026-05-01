@@ -43,7 +43,7 @@
 
 Скрипт ожидает рядом с собой файл **`registry-tags-lab8-hl7.env`** (JDBC к удалённой БД, теги образов). Он выполнит:
 
-- `docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional` (локального Postgres в compose нет);
+- `docker compose --env-file registry-tags-lab8-hl7.env pull app additional` затем `up -d app additional` (локального Postgres в compose нет);
 - ожидание ответа API до ~90 секунд;
 - открытие браузера по адресу Swagger.
 
@@ -93,7 +93,8 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ```powershell
 cd C:\Users\1\Desktop\neurohelp\first_laba\zil
-docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional
+docker compose --env-file registry-tags-lab8-hl7.env pull app additional
+docker compose --env-file registry-tags-lab8-hl7.env up -d app additional
 ```
 
 Подождите, пока контейнеры станут **Up** (проверка: `docker compose ps`). Затем в браузере:
@@ -327,8 +328,8 @@ http://127.0.0.1:8083/swagger-ui/index.html
 
 | Симптом | Что сделать |
 |---------|-------------|
-| Браузер пишет «не удаётся подключиться» | Docker не запущен или контейнеры не поднялись. Выполните `docker compose ps`, при необходимости `docker compose --env-file registry-tags-lab8-hl7.env up --build -d app additional` из папки `zil`. |
-| Долго висит сборка в Docker | Первая сборка нормально идёт минуты. Если обрыв с ошибкой вроде **rpc / EOF** — перезапустите **Docker Desktop**, увеличьте память в настройках Docker, повторите команду. |
+| Браузер пишет «не удаётся подключиться» | Docker не запущен или контейнеры не поднялись. Выполните `docker compose ps`; при необходимости из папки `zil`: `docker compose --env-file registry-tags-lab8-hl7.env pull app additional`, затем `docker compose --env-file registry-tags-lab8-hl7.env up -d app additional`. |
+| Долго тянется `pull` образов | Первая загрузка с Docker Hub / Harbor может идти минуты. Если обрыв с ошибкой вроде **rpc / EOF** — перезапустите **Docker Desktop**, увеличьте память в настройках Docker, повторите команду. |
 | Порт 8083 занят | Другой процесс или старый контейнер. `docker compose down` в `zil` или смена `server.port` в `application.properties` / остановка лишнего процесса. |
 | Swagger открылся, но запросы к API падают | Проверьте, что приложение стартовало без ошибок БД; для Docker: `docker compose logs app`. |
 
