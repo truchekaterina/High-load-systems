@@ -8,14 +8,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if [[ ! -f registry-tags-lab8-hl7.env ]]; then
-  echo "Скопируйте registry-tags-lab8-hl7.env рядом с compose (DBHOST/DBPORT/ZIL_* и пароль БД)."
+ENV_FILE=registry-tags-lab8-hl7.env
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "Скопируйте $ENV_FILE рядом с compose (DBHOST/DBPORT/ZIL_* и пароль БД)."
   exit 1
 fi
-set -a
-# shellcheck source=/dev/null
-source ./registry-tags-lab8-hl7.env
-set +a
 
 export APP_CPUS="${APP_CPUS:-0.5}"
 export ADDITIONAL_CPUS="${ADDITIONAL_CPUS:-0.5}"
@@ -24,9 +21,9 @@ git fetch origin
 git checkout lab8-ads
 git pull origin lab8-ads
 
-docker compose pull app additional
-# Явно app + additional; JDBC и теги образов — из registry-tags-lab8-hl7.env (локального postgres в compose нет).
-docker compose up -d --force-recreate app additional
+# Всегда --env-file: иначе compose падает на обязательных ${DBNAME:?…} и т.д.
+docker compose --env-file "$ENV_FILE" pull app additional
+docker compose --env-file "$ENV_FILE" up -d --force-recreate app additional
 
 echo "--- smoke (на ВМ, localhost) ---"
 curl -sS -o /dev/null -w "8083/stats -> %{http_code}\n" "http://127.0.0.1:8083/stats" || true

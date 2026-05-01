@@ -252,8 +252,8 @@ docker login
 cd ~/work/Labs_hls/zil
 docker compose --env-file registry-tags-lab8-hl7.env pull app additional
 docker compose --env-file registry-tags-lab8-hl7.env up -d app additional
-docker compose ps
-docker compose logs app --tail 80
+docker compose --env-file registry-tags-lab8-hl7.env ps
+docker compose --env-file registry-tags-lab8-hl7.env logs app --tail 80
 ```
 
 **Если падает миграция/БД:** смотри логи `app` и `postgres`. В проекте по умолчанию имя БД в compose — **car_rental**; в таблице у тебя написано **hl7**. **Уточни у преподавателя:** нужно ли переименовать `POSTGRES_DB` / JDBC в `SPRING_DATASOURCE_URL` в `**hl7`** для зачёта, или `hl7` — это имя **отдельного** кластера БД, а в Docker ты всё ещё используешь **встроенный postgres** с `car_rental`. Записи в **отчёте** должны совпадать с тем, что реально крутится.

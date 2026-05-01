@@ -12,7 +12,7 @@ if (-not (Test-Path $registryEnv)) {
     exit 1
 }
 
-Write-Host "docker compose pull + up app (Docker Hub), additional (Harbor)..." -ForegroundColor Cyan
+Write-Host "docker compose --env-file registry-tags-lab8-hl7.env: pull + up app (Hub), additional (Harbor)..." -ForegroundColor Cyan
 docker compose --env-file $registryEnv pull app additional
 docker compose --env-file $registryEnv up -d app additional
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -28,7 +28,7 @@ for ($i = 0; $i -lt 90; $i++) {
 }
 
 if (-not $ok) {
-    Write-Host "App did not respond in time. Check: docker compose logs app --tail 80" -ForegroundColor Yellow
+    Write-Host "App did not respond in time. Check: docker compose --env-file $($registryEnv) logs app --tail 80" -ForegroundColor Yellow
 }
 
 $swagger = "http://127.0.0.1:8083/swagger-ui/index.html"

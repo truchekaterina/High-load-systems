@@ -11,9 +11,10 @@
 Из папки **`zil`** после того, как нужный образ уже есть локально или в registry:
 
 ```bash
-export ZIL_ADDITIONAL_IMAGE=registry.example/you/zil-additional:v1   # свой тег
-docker compose pull additional   # если образ в регистри
-docker compose up -d
+# Обязательно --env-file (JDBC, ZIL_APP_IMAGE, ZIL_ADDITIONAL_IMAGE из файла).
+export ZIL_ADDITIONAL_IMAGE=registry.example/you/zil-additional:v1   # опционально — свой тег
+docker compose --env-file registry-tags-lab8-hl7.env pull app additional
+docker compose --env-file registry-tags-lab8-hl7.env up -d app additional
 ```
 
 Образ можно собрать вручную рядом с клоном: `docker build -t zil-additional:local ./zil-additional-service` и тогда оставить по умолчанию **`zil-additional:local`** без `pull`.
@@ -22,7 +23,7 @@ docker compose up -d
 
 ## CPU (0.5 и 1.0)
 
-Перед `docker compose up` на хосте (пример):
+Перед `docker compose --env-file registry-tags-lab8-hl7.env up -d app additional` на хосте (пример):
 
 ```bash
 export APP_CPUS=0.5

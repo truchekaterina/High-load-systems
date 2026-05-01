@@ -3,9 +3,13 @@
 #
 # Локального PostgreSQL в этом проекте нет: только удалённая БД (узел hl12 и т.п.).
 #
-# Перед `up`: `registry-tags-lab8-hl7.env` (JDBC + теги). Для pull **additional** нужен `docker login hl13.zil:8888`.
+# Перед `up`: файл `registry-tags-lab8-hl7.env` (JDBC + теги). У **всех** команд compose в этом проекте используйте тот же файл:
+#   `--env-file registry-tags-lab8-hl7.env` — иначе ошибки вида «DBNAME is missing» (${…:?…} в environment).
+# Для pull **additional** нужен `docker login hl13.zil:8888`.
 #   docker compose --env-file registry-tags-lab8-hl7.env pull app additional
 #   docker compose --env-file registry-tags-lab8-hl7.env up -d app additional
+#   docker compose --env-file registry-tags-lab8-hl7.env ps
+#   docker compose --env-file registry-tags-lab8-hl7.env logs app --tail 80
 # Сборка **app** из репозитория: добавьте в сервис `app` блок `build:` (см. Dockerfile) — не используется при Hub-образе.
 #
 # ВМ приложения (hl07): bash scripts/vm2307-deploy-lab8.sh — подтягивает тот же env.

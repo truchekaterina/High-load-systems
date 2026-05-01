@@ -43,11 +43,11 @@
 
 Скрипт ожидает рядом с собой файл **`registry-tags-lab8-hl7.env`** (JDBC к удалённой БД, теги образов). Он выполнит:
 
-- `docker compose --env-file registry-tags-lab8-hl7.env pull app additional` затем `up -d app additional` (локального Postgres в compose нет);
+- `docker compose --env-file registry-tags-lab8-hl7.env pull app additional` затем **`docker compose --env-file registry-tags-lab8-hl7.env up -d app additional`** (локального Postgres в compose нет);
 - ожидание ответа API до ~90 секунд;
 - открытие браузера по адресу Swagger.
 
-**Важно:** первая сборка образа может занять **несколько минут** (внутри Docker крутится Gradle). Не закрывайте окно консоли сразу, если оно открылось.
+**Важно:** первая **загрузка образов** (`pull`) может занять **несколько минут**. Не закрывайте окно консоли сразу, если оно открылось.
 
 ### Шаг 4
 
@@ -97,7 +97,7 @@ docker compose --env-file registry-tags-lab8-hl7.env pull app additional
 docker compose --env-file registry-tags-lab8-hl7.env up -d app additional
 ```
 
-Подождите, пока контейнеры станут **Up** (проверка: `docker compose ps`). Затем в браузере:
+Подождите, пока контейнеры станут **Up** (проверка: `docker compose --env-file registry-tags-lab8-hl7.env ps`). Затем в браузере:
 
 ```text
 http://127.0.0.1:8083/swagger-ui/index.html
@@ -106,7 +106,7 @@ http://127.0.0.1:8083/swagger-ui/index.html
 Логи приложения при проблемах:
 
 ```powershell
-docker compose logs app --tail 80
+docker compose --env-file registry-tags-lab8-hl7.env logs app --tail 80
 ```
 
 ---
@@ -328,10 +328,10 @@ http://127.0.0.1:8083/swagger-ui/index.html
 
 | Симптом | Что сделать |
 |---------|-------------|
-| Браузер пишет «не удаётся подключиться» | Docker не запущен или контейнеры не поднялись. Выполните `docker compose ps`; при необходимости из папки `zil`: `docker compose --env-file registry-tags-lab8-hl7.env pull app additional`, затем `docker compose --env-file registry-tags-lab8-hl7.env up -d app additional`. |
+| Браузер пишет «не удаётся подключиться» | Docker не запущен или контейнеры не поднялись. Выполните `docker compose --env-file registry-tags-lab8-hl7.env ps`; при необходимости из папки `zil`: `docker compose --env-file registry-tags-lab8-hl7.env pull app additional`, затем `docker compose --env-file registry-tags-lab8-hl7.env up -d app additional`. |
 | Долго тянется `pull` образов | Первая загрузка с Docker Hub / Harbor может идти минуты. Если обрыв с ошибкой вроде **rpc / EOF** — перезапустите **Docker Desktop**, увеличьте память в настройках Docker, повторите команду. |
-| Порт 8083 занят | Другой процесс или старый контейнер. `docker compose down` в `zil` или смена `server.port` в `application.properties` / остановка лишнего процесса. |
-| Swagger открылся, но запросы к API падают | Проверьте, что приложение стартовало без ошибок БД; для Docker: `docker compose logs app`. |
+| Порт 8083 занят | Другой процесс или старый контейнер. `docker compose --env-file registry-tags-lab8-hl7.env down` в `zil` или смена `server.port` в `application.properties` / остановка лишнего процесса. |
+| Swagger открылся, но запросы к API падают | Проверьте, что приложение стартовало без ошибок БД; для Docker: `docker compose --env-file registry-tags-lab8-hl7.env logs app`. |
 
 ---
 
