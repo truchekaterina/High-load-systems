@@ -12,8 +12,8 @@
 
 | Режим | Что запущено | Когда использовать |
 |--------|----------------|---------------------|
-| **Режим 1 — полный LAB3** | `docker compose up --build -d` → работают **`zil-postgres`** и **`zil-app`** | Сдача преподавателю, проверка «всё в Docker» |
-| **Режим 2 — отладка в IntelliJ** | Только **`zil-postgres`**: `docker compose up -d postgres`, контейнера **`zil-app` нет** | Разработка: Run в IDE на **8083** |
+| **Режим 1 — полный LAB3** | `docker compose --profile local-db up --build -d` → работают **`zil-postgres`** и **`zil-app`** | Сдача преподавателю, проверка «всё в Docker» |
+| **Режим 2 — отладка в IntelliJ** | Только **`zil-postgres`**: `docker compose --profile local-db up -d postgres`, контейнера **`zil-app` нет** | Разработка: Run в IDE на **8083** |
 
 **Перед режимом 2**, если вы до этого поднимали полный стенд:
 
@@ -28,7 +28,7 @@ docker compose ps
 **Перед режимом 1**, если запускали приложение из IDE — **остановите** зелёным квадратом в IntelliJ, затем:
 
 ```powershell
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 ```
 
 ---
@@ -102,7 +102,7 @@ docker compose up --build -d
 | Dockerfile | [`Dockerfile`](Dockerfile) — многостадийная сборка: **JDK 25 Alpine** (Gradle `bootJar` через wrapper JAR), **JRE 25 Alpine**, `EXPOSE 8083`, запуск `java -jar app.jar` | `docker compose build app` |
 | DDL | [`src/main/resources/db/migration/V1__init_schema.sql`](src/main/resources/db/migration/V1__init_schema.sql) | Логи Flyway при старте, таблицы в БД |
 | DML (INSERT) | [`src/main/resources/db/migration/V2__seed_data.sql`](src/main/resources/db/migration/V2__seed_data.sql) | `GET /cars` и др. возвращают JSON с данными |
-| Docker Compose (app + DB) | [`docker-compose.yml`](docker-compose.yml) — сервисы **`postgres`**, **`app`**, healthcheck, том для данных | `docker compose up --build -d`, `docker compose ps` |
+| Docker Compose (app + DB) | [`docker-compose.yml`](docker-compose.yml): **`postgres`** с профилем **`local-db`** + **`app`**, **`additional`**, том для данных | `docker compose --profile local-db up --build -d`, `docker compose ps` |
 | Демонстрация | Раздел [10](#10-сдача-преподавателю-чеклист-демонстрации) ниже | Команды + URL |
 
 **Важно:** в **`application.properties`** включены **`spring.flyway.enabled=true`** и **`spring.jpa.hibernate.ddl-auto=validate`** — таблицы создаёт **Flyway**, Hibernate только сверяет модель с БД.
@@ -127,7 +127,7 @@ docker compose up --build -d
 |------------|----------|
 | HTTP API приложения | **http://localhost:8083** (параметр `server.port` в `application.properties`) |
 | PostgreSQL с **вашего компьютера** (IntelliJ, psql, DBeaver) | **localhost:5433** (в `docker-compose.yml` проброс `5433:5432`) |
-| PostgreSQL **внутри Docker-сети** (из контейнера `app`) | хост **`postgres`**, порт **5432** (строка подключения задаётся в compose через `SPRING_DATASOURCE_URL`) |
+| PostgreSQL **внутри Docker-сети** (из контейнера `app`) | хост **`postgres`**, порт **5432** (`DBHOST`/`DBPORT`/`DBNAME`/`SCHEMANAME` в compose) |
 
 **Конфликт порта 8083:** нельзя одновременно держать **два** процесса приложения на одном порту — например контейнер **`zil-app`** и **Run** в IntelliJ. Либо остановите приложение в Docker (`docker compose stop app`) и запускайте из IDE, либо наоборот — пользуйтесь только контейнером.
 
@@ -150,7 +150,7 @@ docker compose up --build -d
 3. Поднимите только БД:
 
    ```powershell
-   docker compose up -d postgres
+   docker compose --profile local-db up -d postgres
    docker compose ps
    ```
 
@@ -176,7 +176,7 @@ docker compose up --build -d
    ```powershell
    cd <путь>\zil
    docker compose down
-   docker compose up --build -d
+   docker compose --profile local-db up --build -d
    ```
 
    Первая сборка может занять несколько минут (Gradle внутри образа скачивает дистрибутив и собирает проект).
@@ -196,7 +196,7 @@ docker compose up --build -d
 
 ```powershell
 docker compose down -v
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 ```
 
 ---
@@ -243,7 +243,7 @@ Invoke-RestMethod "http://localhost:8083/rents/availability?model=Toyota%20Camry
 Из папки **`zil`**, при преподавателе:
 
 ```powershell
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 docker compose ps
 docker compose logs app --tail 80
 ```
@@ -256,12 +256,12 @@ docker compose logs app --tail 80
 
 - **`Successfully validated N migrations`** — Flyway проверил файлы в `db/migration`.
 - **Первый запуск на пустой БД:** будут строки про **`Migrating schema`** и версии **`1`**, **`2`** (файлы `V1__…`, `V2__…`).
-- **Повторный запуск (БД уже заполнена):** **`Current version of schema "public": 2`** и **`Schema "public" is up to date. No migration necessary.`** — миграции уже применены, повторно SQL не выполняется.
+- **Повторный запуск (БД уже заполнена):** в логах будет указана текущая версия для схемы **`hl7`** (настройка **`SCHEMANAME`**) — миграции уже применены, повторно SQL не выполняется.
 
 Дополнительно можно показать служебную таблицу Flyway в PostgreSQL:
 
 ```powershell
-docker exec -it zil-postgres psql -U rental -d car_rental -c "SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank;"
+docker exec -it zil-postgres psql -U rental -d car_rental -c "SET search_path TO hl7; SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank;"
 ```
 
 Должны быть строки с версиями **1** и **2** (соответствуют `V1__init_schema` и `V2__seed_data`).
@@ -303,7 +303,7 @@ git branch
 | Симптом | Что сделать |
 |---------|-------------|
 | **`Port 8083 already in use`** | Остановите второй экземпляр: `docker compose stop app` или завершите локальный Java-процесс; либо временно смените `server.port` (и не забудьте обновить compose, если меняете порт в контейнере). |
-| **`Connection refused` к `localhost:5433`** | Не запущен Postgres: `docker compose up -d postgres` или полный `docker compose up -d`. |
+| **`Connection refused` к `localhost:5433`** | Не запущен Postgres: `docker compose --profile local-db up -d postgres` или полный стенд `docker compose --profile local-db up --build -d`. |
 | **Сборка Docker: `exec java: input/output error`** (Windows) | Часто лечится образами **Alpine** (как в текущем `Dockerfile`); перезапуск Docker Desktop, `wsl --shutdown`; в крайнем случае — Troubleshoot → Reset. |
 | **Flyway / validate ошибка** | Несовпадение схемы и сущностей: проверьте `V1__init_schema.sql` и аннотации `@Entity`; не смешивайте ручные правки БД без миграций. |
 | **Пустые или странные данные** | Полный сброс тома: `docker compose down -v`, затем снова `up --build -d`. |
@@ -317,7 +317,7 @@ git branch
 
 ```powershell
 cd <путь>\zil
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 docker compose ps
 curl.exe http://localhost:8083/cars
 ```
@@ -327,7 +327,7 @@ curl.exe http://localhost:8083/cars
 ```powershell
 cd <путь>\zil
 docker compose stop app
-docker compose up -d postgres
+docker compose --profile local-db up -d postgres
 ```
 
 Затем **Run** в IntelliJ или `.\gradlew.bat bootRun`.

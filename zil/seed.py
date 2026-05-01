@@ -32,7 +32,7 @@ from faker import Faker
 
 DEFAULT_BASE = "http://localhost:8083"
 DEFAULT_COUNT = 500
-TIMEOUT = 10
+TIMEOUT = 300
 
 
 def fail_response(r: requests.Response, context: str) -> None:

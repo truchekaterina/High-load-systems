@@ -6,7 +6,7 @@
 
 **LAB1:** данные в памяти (HashMap), после перезапуска сбрасываются.  
 **LAB2** (ветка **`lab2-spring-data-jpa`**): **PostgreSQL**, **Spring Data JPA**; тесты на **H2** без Docker.  
-**LAB3:** схема и начальные данные — **Flyway** (`src/main/resources/db/migration`: **DDL** в `V1__…`, **DML** в `V2__…`); контейнеризация — многостадийный **`Dockerfile`** (сборка **`bootJar`** внутри образа, **Alpine Temurin**) + **`docker compose`** (сервисы **postgres** и **app**). Один запуск полного стенда из папки **`zil`**: `docker compose up --build -d`.  
+**LAB3:** схема и начальные данные — **Flyway** (`src/main/resources/db/migration`: **DDL** в `V1__…`, **DML** в `V2__…`); контейнеризация — многостадийный **`Dockerfile`** (сборка **`bootJar`** внутри образа, **Alpine Temurin**) + **`docker compose`** (сервис **postgres** включается профилем **`local-db`**, плюс **app**/**additional**). Полный локальный стенд из **`zil`**: `docker compose --profile local-db up --build -d`.  
 **LAB4 (нагрузка k6):** в **`k6/`** — **`load.js`**, **`run-lab4.ps1`** (серия прогонов k6) и **`plot_k6_reports.py`** (построение `avg_vs_vus.png` из json). Кратко: **[k6/README_LAB4_RU.md](k6/README_LAB4_RU.md)**, план: **[documentation/LAB4_PLAN.md](documentation/LAB4_PLAN.md)**.
 
 Пошаговый план LAB2 (история/шпаргалка): **[LAB2_PLAN.md](LAB2_PLAN.md)** — в конце файла есть **дополнение по LAB3**. Развёрнуто только про LAB3: **[LAB3_PLAN.md](LAB3_PLAN.md)**.
@@ -33,7 +33,7 @@ chmod +x gradlew
 ./gradlew bootRun
 ```
 
-Сервер: **http://localhost:8083** (порт в `src/main/resources/application.properties`). Контейнер **`zil-app`** и запуск из IntelliJ / **`gradlew bootRun`** используют **тот же** порт — одновременно два процесса API на одной машине не поднимайте; для разработки с БД в Docker достаточно `docker compose up -d postgres` и локального `bootRun`.
+Сервер: **http://localhost:8083** (порт в `src/main/resources/application.properties`). Контейнер **`zil-app`** и запуск из IntelliJ / **`gradlew bootRun`** используют **тот же** порт — одновременно два процесса API на одной машине не поднимайте; для разработки с БД в Docker достаточно `docker compose --profile local-db up -d postgres` и локального `bootRun`.
 
 Тесты:
 
@@ -195,7 +195,7 @@ GET /rents/availability?model=Toyota Camry&date=2026-03-12&city=Moscow
 Откройте **Docker Desktop**, затем в папке **`zil`**:
 
 ```bat
-docker compose up -d postgres
+docker compose --profile local-db up -d postgres
 ```
 
 БД: **`localhost:5433`**, пользователь **`rental`**, БД **`car_rental`**, пароль **`rental_pass`**.
@@ -205,8 +205,8 @@ docker compose up -d postgres
 В папке **`zil`** одной командой поднимается БД и собирается/запускается приложение (**`bootJar` выполняется внутри образа**, см. многостадийный **`Dockerfile`**):
 
 ```powershell
-docker compose down -v
-docker compose up --build -d
+docker compose --profile local-db down -v
+docker compose --profile local-db up --build -d
 docker compose ps
 ```
 
@@ -214,7 +214,7 @@ docker compose ps
 
 Логи приложения: `docker compose logs app` (должны быть строки Flyway про миграции).
 
-При сбоях сборки образа (обрыв сети): перезапуск Docker Desktop и повтор `docker compose up --build -d`.
+При сбоях сборки образа (обрыв сети): перезапуск Docker Desktop и повтор `docker compose --profile local-db up --build -d`.
 
 Если **«Docker Desktop is unable to start»** — **Troubleshoot → Restart** или проверка **WSL 2**; без демона Docker команды не выполняются.
 
@@ -222,7 +222,7 @@ docker compose ps
 
 ## LAB4: k6 (Windows, PowerShell)
 
-1. Поднять API (`docker compose up --build -d` или `gradlew.bat bootRun` с БД; не занимайте **8083** двумя процессами).
+1. Поднять API (`docker compose --profile local-db up --build -d` или `gradlew.bat bootRun` с БД; не занимайте **8083** двумя процессами).
 2. В папке **`k6`**: **`.\run-lab4.ps1`** — серия прогонов k6, JSON в `k6/reports/`, затем **`plot_k6_reports.py`** строит `avg_vs_vus.png` (нужны **k6** и **Python** + `matplotlib`).
 
 Пошагово: **[k6/README_LAB4_RU.md](k6/README_LAB4_RU.md)**. Смысл задания: **[documentation/LAB4_PLAN.md](documentation/LAB4_PLAN.md)**.

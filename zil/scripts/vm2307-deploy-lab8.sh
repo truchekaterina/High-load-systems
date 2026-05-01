@@ -24,9 +24,9 @@ git fetch origin
 git checkout lab8-ads
 git pull origin lab8-ads
 
-docker compose pull
-# Без профиля local-db контейнер postgres не стартует; app подключается к DBHOST/DBPORT из env.
-docker compose up -d --force-recreate
+docker compose pull app additional
+# Явно app + additional: postgres с профилем local-db не трогаем; JDBC — из registry-tags-lab8-hl7.env.
+docker compose up -d --force-recreate app additional
 
 echo "--- smoke (на ВМ, localhost) ---"
 curl -sS -o /dev/null -w "8083/stats -> %{http_code}\n" "http://127.0.0.1:8083/stats" || true

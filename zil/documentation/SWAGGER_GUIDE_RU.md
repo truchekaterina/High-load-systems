@@ -43,7 +43,7 @@
 
 Скрипт выполнит:
 
-- `docker compose up --build -d` (PostgreSQL + сборка и запуск Spring Boot в контейнере);
+- `docker compose --profile local-db up --build -d` (PostgreSQL + сборка и запуск Spring Boot в контейнере);
 - ожидание ответа API до ~90 секунд;
 - открытие браузера по адресу Swagger.
 
@@ -93,7 +93,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ```powershell
 cd C:\Users\1\Desktop\neurohelp\first_laba\zil
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 ```
 
 Подождите, пока контейнеры станут **Up** (проверка: `docker compose ps`). Затем в браузере:
@@ -308,7 +308,7 @@ http://127.0.0.1:8083/swagger-ui/index.html
 
 Если вы **не** используете контейнер `app`, а запускаете Spring с компьютера:
 
-1. Должен быть доступен **PostgreSQL** с базой как в `application.properties` (часто это `docker compose up -d postgres` — только БД на порту **5433**).
+1. Должен быть доступен **PostgreSQL** с базой как в `application.properties` (часто это `docker compose --profile local-db up -d postgres` — только БД на порту **5433**).
 
 2. В папке `zil`:
 
@@ -327,7 +327,7 @@ http://127.0.0.1:8083/swagger-ui/index.html
 
 | Симптом | Что сделать |
 |---------|-------------|
-| Браузер пишет «не удаётся подключиться» | Docker не запущен или контейнеры не поднялись. Выполните `docker compose ps`, при необходимости `docker compose up --build -d` из папки `zil`. |
+| Браузер пишет «не удаётся подключиться» | Docker не запущен или контейнеры не поднялись. Выполните `docker compose ps`, при необходимости `docker compose --profile local-db up --build -d` из папки `zil`. |
 | Долго висит сборка в Docker | Первая сборка нормально идёт минуты. Если обрыв с ошибкой вроде **rpc / EOF** — перезапустите **Docker Desktop**, увеличьте память в настройках Docker, повторите команду. |
 | Порт 8083 занят | Другой процесс или старый контейнер. `docker compose down` в `zil` или смена `server.port` в `application.properties` / остановка лишнего процесса. |
 | Swagger открылся, но запросы к API падают | Проверьте, что приложение стартовало без ошибок БД; для Docker: `docker compose logs app`. |

@@ -11,7 +11,7 @@
 | Имена метрик в k6 | Везде используются **`post_ms`** и **`get_ms`** (Trend в JS). Так **`plot_k6_reports.py`** и (на ветке LAB8) **`plot_lab8_reports.py`** читают один и тот же формат summary JSON. |
 | Порт основного CRUD | По умолчанию **`8083`** (`BASE_URL` без туннеля: `http://<хост>:8083`). |
 | Туннель с ПК | **`ssh -p <порт_ВМ> -L 8080:127.0.0.1:8083 ...`** → в браузере **`http://localhost:8080`**. |
-| Лимит CPU контейнера `app` | На хосте перед `docker compose up`: **`export APP_CPUS=0.5`** (или `1.0`, и т.д.). См. комментарии в [`docker-compose.yml`](../docker-compose.yml). |
+| Лимит CPU контейнера `app` | На хосте перед `docker compose --profile local-db up`: **`export APP_CPUS=0.5`** (или `1.0`, и т.д.). На ВМ приложения без профиля — перед `docker compose up` для `app`. См. комментарии в [`docker-compose.yml`](../docker-compose.yml). |
 
 ---
 

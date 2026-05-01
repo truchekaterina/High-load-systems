@@ -88,7 +88,7 @@
 Из папки `zil` (при установленном Docker):
 
 ```text
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 ```
 
 Проверка: в браузере или Postman `GET http://localhost:8083/cars` (ожидается **200** и JSON-массив; после очистки — пустой `[]`).

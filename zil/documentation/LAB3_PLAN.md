@@ -352,7 +352,7 @@ volumes:
 ```powershell
 cd C:\Users\1\Desktop\neurohelp\first_laba\zil
 docker compose down
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 docker compose ps
 ```
 
@@ -401,7 +401,7 @@ Invoke-RestMethod "http://localhost:8083/rents/availability?model=Toyota%20Camry
 
 ```powershell
 cd C:\Users\1\Desktop\neurohelp\first_laba\zil
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 docker compose ps
 ```
 
@@ -418,7 +418,7 @@ docker compose logs postgres
    - схему создаёт Flyway (`V1`),
    - данные добавляет Flyway (`V2`),
    - Hibernate только валидирует (`ddl-auto=validate`),
-   - приложение и БД поднимаются одной командой `docker compose up`.
+   - приложение и БД поднимаются одной командой `docker compose --profile local-db up --build -d`.
 
 ---
 
@@ -440,7 +440,7 @@ git push -u origin lab3-docker-compose
 
 ## Быстрая самопроверка перед сдачей
 
-- `docker compose up --build -d` запускается без ошибок.
+- `docker compose --profile local-db up --build -d` запускается без ошибок.
 - `docker compose ps` показывает `postgres` и `app` в состоянии Up/healthy.
 - `GET /cars`, `GET /clients`, `GET /rents` возвращают JSON.
 - `GET /rents/availability` возвращает `true/false`.
@@ -459,7 +459,7 @@ git push -u origin lab3-docker-compose
 | `duplicate key` / `unique` ошибка | Дублируется seed (Flyway + DataInitializer) | Отключить `DataInitializer`, оставить только Flyway. |
 | Порт `8083` занят | На хосте уже что-то слушает порт | Освободить порт, остановить второй экземпляр приложения или в compose сменить маппинг, например `8084:8083` (снаружи 8084, в контейнере 8083). |
 | Порт `5433` занят | Локальный Postgres уже занял порт | Сменить хост-порт в compose, например `5434:5432`, и поправить локальный URL при запуске с IDE. |
-| Старые данные мешают проверке | persisted volume хранит прежнее состояние | `docker compose down -v` и снова `docker compose up --build -d`. |
+| Старые данные мешают проверке | persisted volume хранит прежнее состояние | `docker compose down -v` и снова `docker compose --profile local-db up --build -d`. |
 
 ---
 
@@ -467,7 +467,7 @@ git push -u origin lab3-docker-compose
 
 ```powershell
 cd C:\Users\1\Desktop\neurohelp\first_laba\zil
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 docker compose ps
 docker compose logs app
 Invoke-RestMethod http://localhost:8083/cars
@@ -478,7 +478,7 @@ docker compose down
 
 ```powershell
 docker compose down -v
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 ```
 
 ---

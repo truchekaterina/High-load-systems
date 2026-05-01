@@ -1,6 +1,6 @@
 # LAB2: Spring Data JPA + PostgreSQL — пошаговый план для проекта `zil`
 
-> **Текущий код (ветка LAB3):** схема и seed в **Flyway** (`db/migration`), стартовые данные **без** `DataInitializer`; Hibernate **`ddl-auto=validate`**. Полный стенд: **`docker compose up --build -d`**. Подробности — в разделе **[LAB3 — дополнение](#lab3-flyway--docker-compose)** в конце документа.
+> **Текущий код (ветка LAB3):** схема и seed в **Flyway** (`db/migration`), стартовые данные **без** `DataInitializer`; Hibernate **`ddl-auto=validate`**. Полный стенд: **`docker compose --profile local-db up --build -d`**. Подробности — в разделе **[LAB3 — дополнение](#lab3-flyway--docker-compose)** в конце документа.
 
 Этот документ написан для **новичка** и описывает **пошаговый путь LAB2**: пакет `rental`, переход с in-memory репозиториев на **JPA**, контроллеры в `zil/src/main/java/rental/`. Отдельные шаги про `DataInitializer` и `ddl-auto=update` относятся к **историческому** сценарию LAB2; в финальном проекте их заменяют миграции Flyway (см. LAB3).
 
@@ -63,7 +63,7 @@
 2. В папке **`zil`**:
 
    ```bat
-   docker compose up -d
+   docker compose --profile local-db up --build -d
    docker compose ps
    ```
 
@@ -321,14 +321,14 @@ git push -u origin lab2-spring-data-jpa
 Из папки **`zil`** при запущенном Docker Desktop:
 
 ```bat
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 docker compose ps
 docker compose logs app --tail 40
 ```
 
 Ожидание: **`zil-postgres`** — healthy, **`zil-app`** — running. API: `http://localhost:8083/cars` (и `/clients`, `/rents`).
 
-Только БД под **IntelliJ** / **`gradlew bootRun`**: `docker compose up -d postgres` (JDBC на хосте: `localhost:5433` — см. `application.properties`).
+Только БД под **IntelliJ** / **`gradlew bootRun`**: `docker compose --profile local-db up -d postgres` (JDBC на хосте: `localhost:5433` — см. `application.properties`).
 
 ### Замечания для защиты
 

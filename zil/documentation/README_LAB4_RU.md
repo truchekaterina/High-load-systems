@@ -93,7 +93,7 @@ flowchart LR
 
 3. **Подними сервер** (база + приложение в Docker). Дождись, пока команда закончится без красных ошибок:
    ```powershell
-   docker compose up --build -d
+   docker compose --profile local-db up --build -d
    ```
    Если Docker не установлен или не запущен — сначала поставь **Docker Desktop** и включи его.
 
@@ -149,7 +149,7 @@ flowchart LR
 В папке `zil` (там, где `docker-compose.yml`):
 
 ```powershell
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 ```
 
 Проверь, что открывается, например: `http://localhost:8083/cars` в браузере.

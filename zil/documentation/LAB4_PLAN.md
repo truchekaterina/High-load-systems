@@ -30,7 +30,7 @@
 
 ```text
 cd zil
-docker compose up --build -d
+docker compose --profile local-db up --build -d
 ```
 
 ---
