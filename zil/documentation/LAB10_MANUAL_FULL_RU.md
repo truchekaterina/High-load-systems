@@ -285,7 +285,33 @@ k6 run --summary-export reports-lab10-s2s/s2s_cpu10_mix00.json load-lab8-s2s.js
 
 ## 8а. Матрица CPU 0.5 / 1.0 и смеси 5% / 50% / 95% одной командой
 
-Скрипт **[`k6/run-lab10-full-matrix.sh`](../k6/run-lab10-full-matrix.sh)** на ВМ, где доступны **Docker** и **k6** (часто **hl07** с вашим `docker compose`):
+Скрипт **[`k6/run-lab10-full-matrix.sh`](../k6/run-lab10-full-matrix.sh)** выполняет полный цикл: смена лимитов CPU → три прогона k6 → после каждого прогона снимает **`docker compose logs app additional`** → в конце **`plot_lab8_reports.py`**.
+
+### Разнесённые ВМ (как в курсе: **k6 на hl11**, **Docker на hl07**)
+
+На **hl11** (должны быть **k6**, **ssh** к hl07, **python3** с matplotlib для графиков):
+
+```bash
+cd ~/Labs_hls/zil/k6
+git pull
+
+export DOCKER_SSH="hl@10.60.3.7"
+export REMOTE_ZIL="/home/hl/work/Labs_hls/zil"
+export BASE_URL="http://10.60.3.7:8084"
+export APP_CHECK_URL="http://10.60.3.7:8083/stats"
+chmod +x run-lab10-full-matrix.sh
+./run-lab10-full-matrix.sh
+```
+
+Подставьте **внутренний IP вашей ВМ с Docker** вместо `10.60.3.7` (тот же хост, куда вы всегда заходили для `docker compose`). Пользователь и путь `REMOTE_ZIL` должны совпадать с тем, как вы ходите по SSH на **hl07**. Ключ/пароль — как на прошлых лабах.
+
+Скрипт по SSH сам выставляет на **hl07** `APP_CPUS` / `ADDITIONAL_CPUS` и делает `docker compose … up`; **k6** и сохранение **JSON** выполняются **на hl11**; логи с **hl07** подтягиваются через тот же SSH и пишутся в `lab10-run-logs`.
+
+Если проверка **app** по **8083** не нужна или порт недоступен с hl11: `export APP_CHECK_URL=`.
+
+### Всё на одной ВМ (docker и k6 вместе)
+
+На **hl07** (или любой одной машине со стендом):
 
 ```bash
 cd ~/Labs_hls/zil/k6
@@ -293,16 +319,9 @@ chmod +x run-lab10-full-matrix.sh
 ./run-lab10-full-matrix.sh
 ```
 
-Он последовательно:
+При туннеле **только на 8084** на эту же машину можно оставить `BASE_URL=http://127.0.0.1:8084`. Иначе задайте `export BASE_URL=http://<IP>:8084`.
 
-1. Выставляет **`APP_CPUS`** / **`ADDITIONAL_CPUS`** (**0.5**, затем **1.0**), делает `docker compose … up -d --force-recreate app additional`, ждёт прогрев.
-2. Для каждого CPU запускает **три** прогона k6 с **`STATS_SHARE`** **0.05**, **0.5**, **0.95** и сохраняет summary в `reports-lab10-s2s/s2s_cpu05_mix{05,50,95}.json` и `s2s_cpu10_mix{05,50,95}.json`.
-3. После **каждого** прогона пишет лог **`docker compose logs app additional`** в `reports-lab10-s2s/lab10-run-logs/`.
-4. В конце вызывает **`plot_lab8_reports.py`** (нужен **matplotlib**) — PNG в той же папке, что и JSON.
-
-**Туннель:** если на этой же ВМ порт **8084** проброшен на `additional`, оставьте по умолчанию `BASE_URL=http://127.0.0.1:8084`. Иначе задайте `export BASE_URL=http://10.60.3.x:8084` перед запуском. Если **8083** недоступен локально, отключите проверку app: `export APP_CHECK_URL=`.
-
-Переменные смотрите в шапке скрипта (`OUT_DIR`, `WARMUP_SEC`, `SKIP_PLOT` и т.д.).
+**Результат:** `reports-lab10-s2s/s2s_cpu{05,10}_mix{05,50,95}.json`, логи в `reports-lab10-s2s/lab10-run-logs/`, PNG после `plot_lab8_reports.py`. Переменные `OUT_DIR`, `WARMUP_SEC`, `SKIP_PLOT` и т.д. — в шапке скрипта.
 
 ---
 

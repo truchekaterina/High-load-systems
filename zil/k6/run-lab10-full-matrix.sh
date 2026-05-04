@@ -1,30 +1,28 @@
 #!/usr/bin/env bash
-# LAB10 / LAB8–9 S2S: два лимита CPU (0.5 и 1.0) × три смеси STATS_SHARE (5%, 50%, 95%),
-# сохранение summary JSON и логов docker compose (app + additional), затем plot_lab8_reports.py.
+# LAB10 / LAB8–9 S2S: CPU 0.5 и 1.0 × смеси STATS_SHARE 5% / 50% / 95%,
+# summary JSON, логи docker compose (app + additional), plot_lab8_reports.py.
 #
-# Запуск одной командой с ВМ, где доступны **docker compose** и **k6** (часто та же машина, что и стенд):
-#   chmod +x run-lab10-full-matrix.sh
+# Два типичных варианта:
+#
+# **А) Всё на одной ВМ** (docker + k6 рядом):
 #   ./run-lab10-full-matrix.sh
 #
-# Если additional доступен через **SSH-туннель** (порт 8084 на этой ВМ проброшен на стенд):
-#   export BASE_URL="http://127.0.0.1:8084"
-#
-# Если k6 на другой машине, а compose локально — по умолчанию скрипт не подходит; задайте REMOTE только
-# для docker (не реализовано) или запускайте скрипт на ВМ с compose и укажите BASE_URL на внутренний IP,
-# доступный с этой же ВМ для k6 (или туннель на localhost).
+# **Б) Как в курсе: k6 на hl11, Docker на hl07** — на **hl11** (нужны k6, ssh, python3 для графиков):
+#   export DOCKER_SSH="hl@10.60.3.7"
+#   export REMOTE_ZIL="/home/hl/work/Labs_hls/zil"
+#   export BASE_URL="http://10.60.3.7:8084"
+#   export APP_CHECK_URL="http://10.60.3.7:8083/stats"
+#   ./run-lab10-full-matrix.sh
+# Подставьте **свой** IP/пользователя hl07 вместо 10.60.3.7; ключ SSH уже настроен (как на прошлых лабах).
 #
 # Переменные окружения (опционально):
-#   ZIL_ROOT          — каталог zil (по умолчанию родитель этого скрипта)
-#   ENV_FILE          — env для compose (по умолчанию ZIL_ROOT/registry-tags-lab8-hl7.env)
-#   BASE_URL          — URL additional без завершающего / (по умолчанию http://127.0.0.1:8084)
-#   OUT_DIR           — куда писать JSON и PNG (по умолчанию ./reports-lab10-s2s)
-#   LOG_DIR           — куда писать логи compose (по умолчанию OUT_DIR/lab10-run-logs)
-#   TARGET_VUS        — по умолчанию 20
-#   DURATION          — по умолчанию 3m
-#   WARMUP_SEC        — пауза после recreate контейнеров, по умолчанию 45
-#   SKIP_PLOT         — если 1: не вызывать plot_lab8_reports.py
-#   APP_CHECK_URL     — проверка основного app после up (по умолчанию http://127.0.0.1:8083/stats);
-#                       при туннеле только на 8084 задайте пусто: APP_CHECK_URL=
+#   DOCKER_SSH      — если задан, docker compose и «logs» выполняются по SSH на эту ВМ (hl07)
+#   REMOTE_ZIL      — каталог zil **на удалённой** ВМ (по умолчанию /home/hl/work/Labs_hls/zil)
+#   REMOTE_ENV_FILE — имя env-файла внутри REMOTE_ZIL (по умолчанию registry-tags-lab8-hl7.env)
+#   ZIL_ROOT        — при локальном docker: каталог zil (по умолчанию родитель этого скрипта)
+#   ENV_FILE        — при локальном docker: полный путь к env
+#   BASE_URL        — URL additional для k6 (на hl11 → http://<IP_hl07>:8084)
+#   OUT_DIR, LOG_DIR, TARGET_VUS, DURATION, WARMUP_SEC, SKIP_PLOT, APP_CHECK_URL — см. ниже
 
 set -euo pipefail
 
@@ -41,6 +39,10 @@ WARMUP_SEC="${WARMUP_SEC:-45}"
 SKIP_PLOT="${SKIP_PLOT:-0}"
 APP_CHECK_URL="${APP_CHECK_URL:-http://127.0.0.1:8083/stats}"
 
+DOCKER_SSH="${DOCKER_SSH:-}"
+REMOTE_ZIL="${REMOTE_ZIL:-/home/hl/work/Labs_hls/zil}"
+REMOTE_ENV_FILE="${REMOTE_ENV_FILE:-registry-tags-lab8-hl7.env}"
+
 export BASE_URL
 export TARGET_VUS
 export DURATION
@@ -53,17 +55,30 @@ require() {
 }
 
 require k6
-require docker
+if [[ -z "${DOCKER_SSH}" ]]; then
+  require docker
+else
+  require ssh
+fi
 
-if [[ ! -f "$ENV_FILE" ]]; then
-  echo "Нет файла: $ENV_FILE" >&2
-  exit 1
+if [[ -z "${DOCKER_SSH}" ]]; then
+  if [[ ! -f "$ENV_FILE" ]]; then
+    echo "Нет файла: $ENV_FILE" >&2
+    exit 1
+  fi
 fi
 
 mkdir -p "$OUT_DIR" "$LOG_DIR"
 
 compose() {
-  docker compose --project-directory "$ZIL_ROOT" --env-file "$ENV_FILE" "$@"
+  if [[ -n "${DOCKER_SSH}" ]]; then
+    local remote_cmd
+    remote_cmd=$(printf '%q ' "$@")
+    ssh "$DOCKER_SSH" \
+      "export APP_CPUS=$(printf '%q' "${APP_CPUS:-}") ADDITIONAL_CPUS=$(printf '%q' "${ADDITIONAL_CPUS:-}"); cd $(printf '%q' "$REMOTE_ZIL") && docker compose --env-file $(printf '%q' "$REMOTE_ENV_FILE") $remote_cmd"
+  else
+    docker compose --project-directory "$ZIL_ROOT" --env-file "$ENV_FILE" "$@"
+  fi
 }
 
 run_k6_and_logs() {
@@ -85,7 +100,7 @@ set_cpu_and_up() {
   local cpus="$1"
   export APP_CPUS="$cpus"
   export ADDITIONAL_CPUS="$cpus"
-  echo ">>> docker compose up APP_CPUS=${cpus} ADDITIONAL_CPUS=${cpus}"
+  echo ">>> docker compose up APP_CPUS=${cpus} ADDITIONAL_CPUS=${cpus} ($([[ -n "${DOCKER_SSH}" ]] && echo "SSH ${DOCKER_SSH}" || echo "локально"))"
   compose up -d --force-recreate app additional
   echo ">>> ожидание прогрева ${WARMUP_SEC}s..."
   sleep "$WARMUP_SEC"
