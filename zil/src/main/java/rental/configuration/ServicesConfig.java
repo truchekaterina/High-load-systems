@@ -2,6 +2,7 @@ package rental.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import rental.observability.ObservabilityService;
 import rental.repository.CarRepository;
 import rental.repository.ClientRepository;
 import rental.repository.RentRepository;
@@ -13,17 +14,20 @@ import rental.service.RentService;
 public class ServicesConfig {
 
     @Bean
-    CarService carService(CarRepository carRepository) {
-        return new CarService(carRepository);
+    CarService carService(CarRepository carRepository, ObservabilityService observabilityService) {
+        return new CarService(carRepository, observabilityService);
     }
 
     @Bean
-    ClientService clientService(ClientRepository clientRepository) {
-        return new ClientService(clientRepository);
+    ClientService clientService(ClientRepository clientRepository, ObservabilityService observabilityService) {
+        return new ClientService(clientRepository, observabilityService);
     }
 
     @Bean
-    RentService rentService(RentRepository rentRepository, CarRepository carRepository) {
-        return new RentService(rentRepository, carRepository);
+    RentService rentService(
+            RentRepository rentRepository,
+            CarRepository carRepository,
+            ObservabilityService observabilityService) {
+        return new RentService(rentRepository, carRepository, observabilityService);
     }
 }

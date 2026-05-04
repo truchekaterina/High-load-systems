@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rental.ClearTarget;
+import rental.observability.ObservabilityService;
 import rental.repository.CarRepository;
 import rental.repository.ClientRepository;
 import rental.repository.RentRepository;
@@ -20,15 +21,18 @@ public class DevDataService {
     private final RentRepository rentRepository;
     private final CarRepository carRepository;
     private final ClientRepository clientRepository;
+    private final ObservabilityService observabilityService;
 
     @Autowired
     public DevDataService(
             RentRepository rentRepository,
             CarRepository carRepository,
-            ClientRepository clientRepository) {
+            ClientRepository clientRepository,
+            ObservabilityService observabilityService) {
         this.rentRepository = rentRepository;
         this.carRepository = carRepository;
         this.clientRepository = clientRepository;
+        this.observabilityService = observabilityService;
     }
 
     /**
@@ -52,21 +56,18 @@ public class DevDataService {
     public void clearByTarget(ClearTarget target) {
         switch (target) {
             case ALL -> {
-                // FK: rents → cars, rents → clients — сначала сносим ссылки, потом родители
-                rentRepository.deleteAll();
-                carRepository.deleteAll();
-                clientRepository.deleteAll();
+                observabilityService.runTimed("db.rent.deleteAll", rentRepository::deleteAll);
+                observabilityService.runTimed("db.car.deleteAll", carRepository::deleteAll);
+                observabilityService.runTimed("db.client.deleteAll", clientRepository::deleteAll);
             }
-            case RENTS -> rentRepository.deleteAll();
+            case RENTS -> observabilityService.runTimed("db.rent.deleteAll", rentRepository::deleteAll);
             case CARS -> {
-                // нельзя удалить car, пока на неё ссылается rent
-                rentRepository.deleteAll();
-                carRepository.deleteAll();
+                observabilityService.runTimed("db.rent.deleteAll", rentRepository::deleteAll);
+                observabilityService.runTimed("db.car.deleteAll", carRepository::deleteAll);
             }
             case CLIENTS -> {
-                // нельзя удалить client, пока на неё ссылается rent
-                rentRepository.deleteAll();
-                clientRepository.deleteAll();
+                observabilityService.runTimed("db.rent.deleteAll", rentRepository::deleteAll);
+                observabilityService.runTimed("db.client.deleteAll", clientRepository::deleteAll);
             }
         }
     }

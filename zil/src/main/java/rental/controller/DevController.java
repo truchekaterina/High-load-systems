@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import rental.ClearTarget;
+import rental.observability.ObservabilityService;
 import rental.service.DevDataService;
 
 /**
@@ -21,10 +22,12 @@ import rental.service.DevDataService;
 public class DevController {
 
     private final DevDataService devDataService;
+    private final ObservabilityService observabilityService;
 
     @Autowired
-    public DevController(DevDataService devDataService) {
+    public DevController(DevDataService devDataService, ObservabilityService observabilityService) {
         this.devDataService = devDataService;
+        this.observabilityService = observabilityService;
     }
 
     /**
@@ -37,13 +40,13 @@ public class DevController {
      */
     @PostMapping("/dev/clear")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void clear(
-            @RequestParam(name = "clear", defaultValue = "all") String clear) {
-        try {
-            // строка HTTP → enum в одном месте; ошибка разбора — в try/catch ниже
-            devDataService.clearByTarget(ClearTarget.fromQuery(clear));
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-        }
+    public void clear(@RequestParam(name = "clear", defaultValue = "all") String clear) {
+        observabilityService.runTimed("web.DevController.clear", () -> {
+            try {
+                devDataService.clearByTarget(ClearTarget.fromQuery(clear));
+            } catch (IllegalArgumentException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+            }
+        });
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import rental.dto.AvailableCarsCountResponse;
 import rental.model.Rent;
+import rental.observability.ObservabilityService;
 import rental.service.RentService;
 
 import java.time.LocalDate;
@@ -14,15 +15,17 @@ import java.util.List;
 public class RentController {
 
     private final RentService rentService;
+    private final ObservabilityService observabilityService;
 
     @Autowired
-    public RentController(RentService rentService) {
+    public RentController(RentService rentService, ObservabilityService observabilityService) {
         this.rentService = rentService;
+        this.observabilityService = observabilityService;
     }
 
     @GetMapping("/rents")
     public List<Rent> getRents() {
-        return rentService.getAllRents();
+        return observabilityService.timed("web.RentController.getRents", rentService::getAllRents);
     }
 
     @GetMapping("/rents/availability")
@@ -30,7 +33,8 @@ public class RentController {
             @RequestParam String model,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam String city) {
-        return rentService.isCarAvailable(model, date, city);
+        return observabilityService.timed(
+                "web.RentController.isCarAvailable", () -> rentService.isCarAvailable(model, date, city));
     }
 
     /**
@@ -41,26 +45,28 @@ public class RentController {
             @RequestParam String model,
             @RequestParam String city,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return rentService.countAvailableCars(model, city, date);
+        return observabilityService.timed(
+                "web.RentController.countAvailableCars",
+                () -> rentService.countAvailableCars(model, city, date));
     }
 
     @GetMapping("/rents/{id}")
     public Rent getRentById(@PathVariable String id) {
-        return rentService.getRentById(id);
+        return observabilityService.timed("web.RentController.getRentById", () -> rentService.getRentById(id));
     }
 
     @DeleteMapping("/rents/{id}")
     public void deleteRent(@PathVariable String id) {
-        rentService.deleteRent(id);
+        observabilityService.runTimed("web.RentController.deleteRent", () -> rentService.deleteRent(id));
     }
 
     @PostMapping("/rents")
     public Rent saveRent(@RequestBody Rent rent) {
-        return rentService.saveRent(rent);
+        return observabilityService.timed("web.RentController.saveRent", () -> rentService.saveRent(rent));
     }
 
     @PutMapping("/rents/{id}")
     public Rent updateRent(@PathVariable String id, @RequestBody Rent rent) {
-        return rentService.updateRent(id, rent);
+        return observabilityService.timed("web.RentController.updateRent", () -> rentService.updateRent(id, rent));
     }
 }
