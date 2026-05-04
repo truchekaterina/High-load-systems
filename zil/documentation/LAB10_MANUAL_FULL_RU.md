@@ -283,6 +283,29 @@ k6 run --summary-export reports-lab10-s2s/s2s_cpu10_mix00.json load-lab8-s2s.js
 
 ---
 
+## 8а. Матрица CPU 0.5 / 1.0 и смеси 5% / 50% / 95% одной командой
+
+Скрипт **[`k6/run-lab10-full-matrix.sh`](../k6/run-lab10-full-matrix.sh)** на ВМ, где доступны **Docker** и **k6** (часто **hl07** с вашим `docker compose`):
+
+```bash
+cd ~/Labs_hls/zil/k6
+chmod +x run-lab10-full-matrix.sh
+./run-lab10-full-matrix.sh
+```
+
+Он последовательно:
+
+1. Выставляет **`APP_CPUS`** / **`ADDITIONAL_CPUS`** (**0.5**, затем **1.0**), делает `docker compose … up -d --force-recreate app additional`, ждёт прогрев.
+2. Для каждого CPU запускает **три** прогона k6 с **`STATS_SHARE`** **0.05**, **0.5**, **0.95** и сохраняет summary в `reports-lab10-s2s/s2s_cpu05_mix{05,50,95}.json` и `s2s_cpu10_mix{05,50,95}.json`.
+3. После **каждого** прогона пишет лог **`docker compose logs app additional`** в `reports-lab10-s2s/lab10-run-logs/`.
+4. В конце вызывает **`plot_lab8_reports.py`** (нужен **matplotlib**) — PNG в той же папке, что и JSON.
+
+**Туннель:** если на этой же ВМ порт **8084** проброшен на `additional`, оставьте по умолчанию `BASE_URL=http://127.0.0.1:8084`. Иначе задайте `export BASE_URL=http://10.60.3.x:8084` перед запуском. Если **8083** недоступен локально, отключите проверку app: `export APP_CHECK_URL=`.
+
+Переменные смотрите в шапке скрипта (`OUT_DIR`, `WARMUP_SEC`, `SKIP_PLOT` и т.д.).
+
+---
+
 ## 9. Графики
 
 Из каталога `zil/k6`:
