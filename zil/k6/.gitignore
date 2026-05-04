@@ -1,8 +1,7 @@
 summary*.json
 reports/summary-vus-*.json
 reports/avg_vs_vus.png
-# LAB6: reports-lab6-pc и reports-lab6-s2s в репозитории (артефакты для отчёта).
 
-# Кэш Python (встроен в run-lab4.ps1) — не коммитить
+# Кэш Python — не коммитить
 __pycache__/
 *.pyc
