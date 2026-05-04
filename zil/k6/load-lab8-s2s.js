@@ -1,8 +1,11 @@
 /**
  * LAB8 k6: Additional service S2S endpoints.
  *
- * Main run defaults to 100% availability requests:
+ * Main run defaults to 100% availability_new requests:
  *   BASE_URL=http://localhost:8084 TARGET_VUS=20 DURATION=3m k6 run load-lab8-s2s.js
+ *
+ * Optional path override (absolute URL or path under BASE_URL):
+ *   AVAILABILITY_PATH=/additional/cars/availability_new
  *
  * Optional mixed run (STATS_SHARE is a fraction from 0 to 1):
  *   STATS_SHARE=0.5 k6 run load-lab8-s2s.js
@@ -23,8 +26,18 @@ const totalVu = Number(__ENV.TARGET_VUS || '20');
 const duration = __ENV.DURATION || '3m';
 const rawStatsShare = Number(__ENV.STATS_SHARE || '0');
 const statsShare = Math.min(1, Math.max(0, rawStatsShare));
-const city = __ENV.CITY || 'Moscow';
-const date = __ENV.DATE || '2026-04-03';
+
+function resolveAvailabilityUrl() {
+  const raw = __ENV.AVAILABILITY_PATH || '/additional/cars/availability_new';
+  const trimmed = raw.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/\/+$/, '');
+  }
+  const rel = trimmed.replace(/^\/+/, '').replace(/\/+$/, '');
+  return `${baseUrl}/${rel}`;
+}
+
+const availabilityUrl = resolveAvailabilityUrl();
 
 export const options = {
   vus: totalVu,
@@ -41,11 +54,7 @@ export default function () {
     timeStats.add(res.timings.duration);
     check(res, { ok: (r) => r.status === 200 });
   } else {
-    const cityParam = encodeURIComponent(city);
-    const dateParam = encodeURIComponent(date);
-    const res = http.get(
-      `${baseUrl}/additional/cars/availability?city=${cityParam}&date=${dateParam}`,
-    );
+    const res = http.get(availabilityUrl);
     timeAvailability.add(res.timings.duration);
     check(res, { ok: (r) => r.status === 200 });
   }
