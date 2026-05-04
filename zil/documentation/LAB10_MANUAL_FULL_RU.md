@@ -166,24 +166,60 @@ docker compose --env-file registry-tags-lab8-hl7.env up -d --force-recreate app 
 docker compose --env-file registry-tags-lab8-hl7.env ps
 ```
 
-Проверки:
+Проверки (подождите **10–30 с** после `up`, иначе возможны **connection reset** или **500** до прогрева JVM):
 
 ```bash
 curl -sS -o /dev/null -w "app %{http_code}\n" http://127.0.0.1:8083/stats
 curl -sS -o /dev/null -w "additional %{http_code}\n" http://127.0.0.1:8084/additional/stats
 ```
 
+Ожидается **`200`** на обе строки. При ошибке повторите `curl` через минуту и при необходимости смотрите `docker compose --env-file registry-tags-lab8-hl7.env logs app additional --tail 50`.
+
 Если **additional** на **другой ВМ**, задайте `MAIN_SERVICE_BASE_URL=http://<внутренний_IP_узла_с_app>:8083`, а `curl` к **8084** выполняйте на той ВМ, где слушает additional (см. [LAB9_MANUAL_FULL_RU.md](LAB9_MANUAL_FULL_RU.md), часть 3А).
 
 ---
 
-## 6. Нагрузка k6 с ВМ k6 (например `10.60.3.8`, SSH `2311`)
+## 6. Нагрузка k6: переменная `BASE_URL`
+
+Сценарий `load-lab8-s2s.js` читает **`BASE_URL`** — это **полный URL до additional** (порт **8084**), **без** завершающего слэша.
+
+### 6.1. Какой адрес подставлять
+
+1. **k6 запускаете на той же ВМ, где уже крутится `docker compose` (app + additional)** — как на **hl07** в одном сеансе:
+
+```bash
+export BASE_URL="http://127.0.0.1:8084"
+```
+
+2. **k6 на отдельной ВМ** (например узел нагрузки `10.60.3.8`, SSH `2311`) — нужен **внутренний IP ВМ, где слушает порт 8084** (часто сеть курса `10.60.3.0/24`). На ВМ с compose выполните:
+
+```bash
+hostname -I
+# или: ip -4 -br addr show scope global
+```
+
+Возьмите адрес вида **`10.60.3.x`**, доступный с k6-ВМ по `curl` (не `127.0.0.1` — это только «сама машина»). Пример (подставьте **свой** IP вместо `10.60.3.7`):
+
+```bash
+export BASE_URL="http://10.60.3.7:8084"
+```
+
+3. Проверка **с той же машины, где будет `k6 run`**:
+
+```bash
+curl -sS -o /dev/null -w "%{http_code}\n" "${BASE_URL}/additional/stats"
+```
+
+Должно быть **`200`**.
+
+### 6.2. Полный пример на ВМ k6 (отдельный узел)
 
 ```bash
 ssh -p 2311 hl@hlssh.zil.digital
 cd ~/Labs_hls/zil/k6
 git pull
-export BASE_URL="http://<IP_ВМ_где_слушает_additional>:8084"
+
+export BASE_URL="http://10.60.3.7:8084"
 export TARGET_VUS=20
 export DURATION=3m
 export STATS_SHARE=0
@@ -192,15 +228,22 @@ mkdir -p reports-lab10-s2s
 k6 run --summary-export reports-lab10-s2s/s2s_cpu05_mix00.json load-lab8-s2s.js
 ```
 
-**`<IP_ВМ_где_слушает_additional>`** — узел с открытым **8084**, доступный с k6 по сети курса.
+Замените **`10.60.3.7`** на IP вашей ВМ с контейнером **additional** (см. п. 6.1).
 
-Проверка с k6-ВМ:
+### 6.3. Если k6 с того же хоста, что и compose
 
 ```bash
-curl -sS -o /dev/null -w "%{http_code}\n" "$BASE_URL/additional/stats"
+cd ~/Labs_hls/zil/k6
+export BASE_URL="http://127.0.0.1:8084"
+export TARGET_VUS=20
+export DURATION=3m
+export STATS_SHARE=0
+
+mkdir -p reports-lab10-s2s
+k6 run --summary-export reports-lab10-s2s/s2s_cpu05_mix00.json load-lab8-s2s.js
 ```
 
-Для смеси `/additional/stats` и availability, как в LAB8, задайте `STATS_SHARE=0.5` и имя файла вроде `s2s_cpu05_mix50.json`.
+Для смеси `/additional/stats` и availability, как в LAB8: `export STATS_SHARE=0.5` и имя файла, например `s2s_cpu05_mix50.json`.
 
 ---
 
