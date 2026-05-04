@@ -1,4 +1,4 @@
-# k6 и отчёты: LAB6, LAB7, LAB8
+# k6 и отчёты: LAB6, LAB7, LAB8, LAB9
 
 Краткая карта: какие скрипты и папки относятся к нагрузочным лабам после выноса стенда на ВМ и удалённую БД.
 
@@ -51,16 +51,30 @@
 
 ---
 
-## 5. Сводная таблица
+## 5. LAB9 — наблюдаемость в приложениях, тот же k6 против **8084**
+
+**Сценарий и метрики** те же, что в LAB8: **`load-lab8-s2s.js`**, тренды **`post_ms`** / **`get_ms`**.
+
+| Что | Значение |
+| ----- | -------- |
+| Сценарий | **`load-lab8-s2s.js`**, **`BASE_URL`** — IP узла на **8084** (часто **hl07** или **hl13**, если добав. сервис там). CPU: **`APP_CPUS`** (на узле **`app`**), **`ADDITIONAL_CPUS`** (на узле **`additional`**) — см. [LAB9_MANUAL_FULL_RU.md](LAB9_MANUAL_FULL_RU.md), **части 3А и 8**. |
+| Отчёты | Удобно отдельная папка **`reports-lab9-s2s`**, имена по аналогии LAB8 (`s2s_cpu05_*.json`, `s2s_cpu10_*.json`). |
+| Логи | **`docker compose … logs app additional`** — сводки **`ObservabilityService`**. |
+| Графики | Обычно тот же **`plot_lab8_reports.py`** (те же поля в summary JSON). |
+
+---
+
+## 6. Сводная таблица
 
 | Лаба | Скрипт k6 | Папка JSON | Python | Типичный PNG |
 | ---- | ----------- | ---------- | ------ | ------------- |
 | LAB6 | `load.js` + `LAB6_CONST=1` | `reports-lab6-pc`, `reports-lab6-s2s` | `plot_k6_reports.py --lab6` | `lab6_latency_vs_cpu.png` |
 | LAB8 | `load-lab8-s2s.js` | `reports-lab8-s2s` | `plot_lab8_reports.py` | `lab8_latency_vs_cpu.png` |
+| LAB9 | `load-lab8-s2s.js` | `reports-lab9-s2s` (реком.) | `plot_lab8_reports.py` | см. LAB8 PNG / свой префикс |
 
 ---
 
-## 6. `docker-compose.yml` и лабы
+## 7. `docker-compose.yml` и лабы
 
 В актуальном репозитории **локального `postgres` в compose нет**: сервис **`app`** (и **`additional`** в LAB8) получает переменные через **`--env-file`** (см. шапку файла).
 
@@ -69,5 +83,6 @@
 | LAB6 | Удалённая БД по env (как в **`registry-tags-*`**) | **`ZIL_APP_IMAGE`** |
 | LAB7 | То же; выделенный узел БД (**hl12** и т.п.) | То же |
 | LAB8 | То же + второй сервис **`additional`** (**8084**) | **`ZIL_APP_IMAGE`**, **`ZIL_ADDITIONAL_IMAGE`** |
+| LAB9 | То же, образы со встроенной наблюдаемостью LAB9 | **`ZIL_APP_IMAGE`**, **`ZIL_ADDITIONAL_IMAGE`** |
 
 Если график не строится — проверьте наличие **`post_ms`/`get_ms`** в JSON и совпадение имён файлов с regex в `plot_*.py`.
