@@ -54,7 +54,22 @@ require() {
   }
 }
 
-require k6
+require_k6_or_hint() {
+  if command -v k6 >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "Нужна команда: k6 — нагрузку запускает **эта** машина; docker compose при DOCKER_SSH уходит по SSH на hl07." >&2
+  if [[ -z "${DOCKER_SSH}" ]] && command -v docker >/dev/null 2>&1; then
+    echo "На hl07 k6 ставить не нужно. Выполните матрицу с **hl11** (или другой ВМ с k6), откуда есть ssh на hl07, например:" >&2
+    echo '  export DOCKER_SSH="hl@10.60.3.2" REMOTE_ZIL="/home/hl/work/Labs_hls/zil"' >&2
+    echo '  export BASE_URL="http://10.60.3.2:8084" APP_CHECK_URL="http://10.60.3.2:8083/stats"' >&2
+    echo '  cd ~/work/Labs_hls/zil/k6  # или ~/Labs_hls/zil/k6' >&2
+    echo '  ./run-lab10-full-matrix.sh' >&2
+  fi
+  exit 1
+}
+
+require_k6_or_hint
 if [[ -z "${DOCKER_SSH}" ]]; then
   require docker
 else
