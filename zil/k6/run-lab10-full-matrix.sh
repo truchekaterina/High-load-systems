@@ -2,18 +2,17 @@
 # LAB10 / LAB8–9 S2S: CPU 0.5 и 1.0 × смеси STATS_SHARE 5% / 50% / 95%,
 # summary JSON, логи docker compose (app + additional), plot_lab8_reports.py.
 #
-# Два типичных варианта:
+# **Обычно:** Docker на ВМ приложений (hl07), k6 на **отдельной** ВМ — скрипт запускают **там, где k6**:
 #
-# **А) Всё на одной ВМ** (docker + k6 рядом):
-#   ./run-lab10-full-matrix.sh
-#
-# **Б) Как в курсе: k6 на hl11, Docker на hl07** — на **hl11** (нужны k6, ssh, python3 для графиков):
 #   export DOCKER_SSH="hl@10.60.3.2"
 #   export REMOTE_ZIL="/home/hl/work/Labs_hls/zil"
 #   export BASE_URL="http://10.60.3.2:8084"
 #   export APP_CHECK_URL="http://10.60.3.2:8083/stats"
 #   ./run-lab10-full-matrix.sh
-# Пример для hl07 с адресом 10.60.3.2 в сети курса; иначе — свой IP и пользователь (ключ SSH как на прошлых лабах).
+#
+# На hl07 k6 не нужен. 10.60.3.2 — пример IP hl07 в сети курса; свой IP/пользователь см. LAB10_MANUAL_FULL_RU.md.
+#
+# **Редко:** docker и k6 на одной машине — тогда DOCKER_SSH не задавайте и см. мануал.
 #
 # Переменные окружения (опционально):
 #   DOCKER_SSH      — если задан, docker compose и «logs» выполняются по SSH на эту ВМ (hl07)
