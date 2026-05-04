@@ -120,7 +120,7 @@ def collect_mix(root: Path) -> dict[float, dict[str, tuple[float, float]]]:
 
 def plot_lab8_like_lab6(root: Path) -> bool:
     """
-    Тот же смысл, что plot_lab6_cpu_axis в plot_k6_reports.py --lab6:
+    Тот же смысл, что график LAB6 «три панели по смесям, ось X = CPU»:
     три subplot по смесям, ось X = CPU (здесь только 0.5 и 1.0).
     Легенда — эндпоинты Additional (не /clients и /stats).
     """

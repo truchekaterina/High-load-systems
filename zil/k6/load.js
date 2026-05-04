@@ -3,7 +3,7 @@
  *
  * Режим LAB4 (по умолчанию):
  *   ramping-vus, два сценария only_post / only_get, доли VU по POST_SHARE.
- *   TARGET_VUS, POST_SHARE, BASE_URL — как раньше; run-lab4.ps1 не менялся.
+ *   TARGET_VUS, POST_SHARE, BASE_URL — как в материалах курса для ранних лаб.
  *
  * Режим LAB6 (const VU, фиксированная длительность, микс 5/95 …):
  *   LAB6_CONST=1
