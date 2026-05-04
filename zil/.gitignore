@@ -75,6 +75,9 @@ application-local.properties
 credentials.json
 google-services.json
 
+# Резервная копия registry env (пароли локально; не в git)
+*.env.save
+
 # Опционально: личный черновик плана (раскомментируйте, если не хотите вести файл в git)
 # LAB2_PLAN.md
 
