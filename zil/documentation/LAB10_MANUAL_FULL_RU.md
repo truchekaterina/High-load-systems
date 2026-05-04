@@ -198,10 +198,10 @@ hostname -I
 # или: ip -4 -br addr show scope global
 ```
 
-Возьмите адрес вида **`10.60.3.x`**, доступный с k6-ВМ по `curl` (не `127.0.0.1` — это только «сама машина»). Пример (подставьте **свой** IP вместо `10.60.3.7`):
+Возьмите адрес вида **`10.60.3.x`**, доступный с k6-ВМ по `curl` (не `127.0.0.1` — это только «сама машина»). Для **hl07** в сети курса это обычно **`10.60.3.2`** (проверьте своей командой выше); для другого стенда подставьте свой адрес:
 
 ```bash
-export BASE_URL="http://10.60.3.7:8084"
+export BASE_URL="http://10.60.3.2:8084"
 ```
 
 3. Проверка **с той же машины, где будет `k6 run`**:
@@ -219,7 +219,7 @@ ssh -p 2311 hl@hlssh.zil.digital
 cd ~/Labs_hls/zil/k6
 git pull
 
-export BASE_URL="http://10.60.3.7:8084"
+export BASE_URL="http://10.60.3.2:8084"
 export TARGET_VUS=20
 export DURATION=3m
 export STATS_SHARE=0
@@ -228,7 +228,7 @@ mkdir -p reports-lab10-s2s
 k6 run --summary-export reports-lab10-s2s/s2s_cpu05_mix00.json load-lab8-s2s.js
 ```
 
-Замените **`10.60.3.7`** на IP вашей ВМ с контейнером **additional** (см. п. 6.1).
+Если у вас не та же ВМ или адрес из `hostname -I` другой — возьмите IP по п. 6.1.
 
 ### 6.3. Если k6 с того же хоста, что и compose
 
@@ -295,15 +295,15 @@ k6 run --summary-export reports-lab10-s2s/s2s_cpu10_mix00.json load-lab8-s2s.js
 cd ~/Labs_hls/zil/k6
 git pull
 
-export DOCKER_SSH="hl@10.60.3.7"
+export DOCKER_SSH="hl@10.60.3.2"
 export REMOTE_ZIL="/home/hl/work/Labs_hls/zil"
-export BASE_URL="http://10.60.3.7:8084"
-export APP_CHECK_URL="http://10.60.3.7:8083/stats"
+export BASE_URL="http://10.60.3.2:8084"
+export APP_CHECK_URL="http://10.60.3.2:8083/stats"
 chmod +x run-lab10-full-matrix.sh
 ./run-lab10-full-matrix.sh
 ```
 
-Подставьте **внутренний IP вашей ВМ с Docker** вместо `10.60.3.7` (тот же хост, куда вы всегда заходили для `docker compose`). Пользователь и путь `REMOTE_ZIL` должны совпадать с тем, как вы ходите по SSH на **hl07**. Ключ/пароль — как на прошлых лабах.
+Ниже указан **`10.60.3.2`** — внутренний адрес **hl07** в этой сети (тот же хост, куда вы ходите за `docker compose`). На другом стенде замените на адрес из п. 6.1. Пользователь и путь `REMOTE_ZIL` должны совпадать с вашим SSH на **hl07**. Ключ/пароль — как на прошлых лабах.
 
 Скрипт по SSH сам выставляет на **hl07** `APP_CPUS` / `ADDITIONAL_CPUS` и делает `docker compose … up`; **k6** и сохранение **JSON** выполняются **на hl11**; логи с **hl07** подтягиваются через тот же SSH и пишутся в `lab10-run-logs`.
 

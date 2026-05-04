@@ -8,12 +8,12 @@
 #   ./run-lab10-full-matrix.sh
 #
 # **Б) Как в курсе: k6 на hl11, Docker на hl07** — на **hl11** (нужны k6, ssh, python3 для графиков):
-#   export DOCKER_SSH="hl@10.60.3.7"
+#   export DOCKER_SSH="hl@10.60.3.2"
 #   export REMOTE_ZIL="/home/hl/work/Labs_hls/zil"
-#   export BASE_URL="http://10.60.3.7:8084"
-#   export APP_CHECK_URL="http://10.60.3.7:8083/stats"
+#   export BASE_URL="http://10.60.3.2:8084"
+#   export APP_CHECK_URL="http://10.60.3.2:8083/stats"
 #   ./run-lab10-full-matrix.sh
-# Подставьте **свой** IP/пользователя hl07 вместо 10.60.3.7; ключ SSH уже настроен (как на прошлых лабах).
+# Пример для hl07 с адресом 10.60.3.2 в сети курса; иначе — свой IP и пользователь (ключ SSH как на прошлых лабах).
 #
 # Переменные окружения (опционально):
 #   DOCKER_SSH      — если задан, docker compose и «logs» выполняются по SSH на эту ВМ (hl07)
