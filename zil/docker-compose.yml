@@ -19,13 +19,13 @@
 # Нужен Docker Compose **v2.20+** (совместимость с синтаксисом depends_on: required).
 
 # LAB6: на хосте перед up можно задать лимиты: export APP_CPUS=0.5 APP_MEM=768m
-# LAB8: ZIL_ADDITIONAL_IMAGE и ZIL_APP_IMAGE см. registry-tags*.env.
+# LAB8/LAB9: ZIL_ADDITIONAL_IMAGE и ZIL_APP_IMAGE см. registry-tags*.env.
 
 # LAB7 узел БД (hl12): отдельно docker-compose.lab7-db-node.yml — не смешивать с ВМ приложения.
 
 services:
   app:
-    image: ${ZIL_APP_IMAGE:-docker.io/rinakt/zil-app:hl7-latest}
+    image: ${ZIL_APP_IMAGE:-docker.io/rinakt/zil-app:lab9}
     container_name: zil-app
     environment:
       DBHOST: ${DBHOST:?Set DBHOST in env or registry-tags-lab8-hl7.env}
@@ -45,7 +45,7 @@ services:
     mem_limit: "${APP_MEM:-768m}"
 
   additional:
-    image: ${ZIL_ADDITIONAL_IMAGE:-hl13.zil:8888/katya/zil-additional-service:lab8}
+    image: ${ZIL_ADDITIONAL_IMAGE:-hl13.zil:8888/katya/zil-additional-service:lab9}
     container_name: zil-additional-service
     environment:
       MAIN_SERVICE_BASE_URL: http://app:8083
