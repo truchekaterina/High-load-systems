@@ -92,19 +92,64 @@ public void logCacheSize() {
 
 ---
 
-## 4. Сборка образа и Harbor
+## 4. Сборка образа и обновление `registry-tags-lab8-hl7.env`
 
-1. В корне **`zil-additional-service`**: собрать образ с тегом, например **`lab10`**.
-2. `docker login` в ваш registry (часто Harbor; имя хоста смотрите в `ZIL_ADDITIONAL_IMAGE` или методичке).
-3. `docker push` в **ваш** проект в registry.
+### 4.1. Сборка и push
 
-На ВМ с `docker compose` в **`registry-tags-lab8-hl7.env`** обновить:
+1. В корне **`zil-additional-service`**: собрать образ с тегом **`lab10`**.
+2. `docker login` в ваш registry (**Harbor** или **Docker Hub** — как в методичке).
+3. `docker push` в **ваш** репозиторий (путь должен совпасть со строкой `ZIL_ADDITIONAL_IMAGE` ниже).
+
+### 4.2. Что менять в `registry-tags-lab8-hl7.env`
+
+Для **LAB10** в этом файле **достаточно одной строки** — про образ **additional**. Остальное (**`DBHOST`**, **`ZIL_APP_IMAGE`**, пароли JDBC и т.д.) **не меняйте**, если методичка явно не просит.
+
+**Лимиты CPU** (`APP_CPUS`, `ADDITIONAL_CPUS`) в `.env` обычно **не редактируют**: их задают в shell перед `docker compose up`, как в разделах **5** и **8** ниже.
+
+Типичные варианты для **одной** строки `ZIL_ADDITIONAL_IMAGE` (без лишних пробелов и кавычек):
+
+- **Harbor** (как в шаблоне репозитория `zil`):
 
 ```env
-ZIL_ADDITIONAL_IMAGE=<ваш_реестр>/<проект>/zil-additional-service:lab10
+ZIL_ADDITIONAL_IMAGE=hl13.zil:8888/katya/zil-additional-service:lab10
 ```
 
-Основной образ **app** менять не нужно, если ТЗ касается только additional.
+- **Docker Hub** — короткая или полная форма (для Docker обычно эквивалентны):
+
+```env
+ZIL_ADDITIONAL_IMAGE=rinakt/zil-additional:lab10
+```
+
+```env
+ZIL_ADDITIONAL_IMAGE=docker.io/rinakt/zil-additional:lab10
+```
+
+Главное — **одна** актуальная строка `ZIL_ADDITIONAL_IMAGE` и реальный путь к образу, который вы запушили.
+
+### 4.3. Что ещё прописать в этом файле под LAB10?
+
+По сути — **только тег additional** на `lab10` (или другой тег, если его дал преподаватель). Остальные переменные оставьте как для рабочего стенда LAB8/LAB9.
+
+Основной образ **app** меняют только если в ТЗ нужна новая сборка `zil`; для чистого задания про кеш в **additional** часто достаточно обновить **только** `ZIL_ADDITIONAL_IMAGE`.
+
+### 4.4. Перезапуск additional на ВМ
+
+После правки env:
+
+```bash
+cd ~/Labs_hls/zil
+docker compose --env-file registry-tags-lab8-hl7.env pull additional
+docker compose --env-file registry-tags-lab8-hl7.env up -d --force-recreate additional
+```
+
+Если у вас по инструкции пересоздают оба сервиса:
+
+```bash
+docker compose --env-file registry-tags-lab8-hl7.env pull app additional
+docker compose --env-file registry-tags-lab8-hl7.env up -d --force-recreate app additional
+```
+
+**Что ещё так прописать?** Если сомневаетесь — для десятой лабы почти всегда хватает **одной** строки `ZIL_ADDITIONAL_IMAGE` с тегом **`lab10`** и команд `pull` / `up` выше.
 
 ---
 
