@@ -26,7 +26,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ "${LAB10_USE_STAND_ENV:-}" == 1 ]]; then
   if [[ ! -f "$SCRIPT_DIR/lab10-stand.env" ]]; then
-    echo "Нет файла $SCRIPT_DIR/lab10-stand.env — скопируйте из lab10-stand.env.example и заполните." >&2
+    echo "Нет файла $SCRIPT_DIR/lab10-stand.env — возьмите из репозитория (zil/k6) или из lab10-stand.env.example." >&2
     exit 1
   fi
   set -a

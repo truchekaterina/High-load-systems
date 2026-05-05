@@ -289,22 +289,20 @@ k6 run --summary-export reports-lab10-s2s/s2s_cpu10_mix00.json load-lab8-s2s.js
 
 | Где | Файл | Зачем |
 |-----|------|--------|
-| **hl11** (k6) | **`lab10-stand.env`** | Один раз скопировать из **[`k6/lab10-stand.env.example`](../k6/lab10-stand.env.example)** и заполнить: `HL07_SSH`, `REMOTE_ZIL`, `BASE_URL` (узел с **8084**), при необходимости `APP_CHECK_URL`. |
+| **hl11** (k6) | **[`k6/lab10-stand.env`](../k6/lab10-stand.env)** | В репозитории уже есть файл с примером адресов; при необходимости поправьте `HL07_SSH`, `REMOTE_ZIL`, `BASE_URL` (узел с **8084**), `APP_CHECK_URL`. Шаблон — [`lab10-stand.env.example`](../k6/lab10-stand.env.example). |
 | **hl11** | **[`k6/lab10-hl11-k6-matrix.sh`](../k6/lab10-hl11-k6-matrix.sh)** | Полный цикл: по SSH на hl07 — **CPU + compose up + логи**; локально — **k6** × 6 и **`plot_lab8_reports.py`**. |
 | **hl07** (Docker) | **[`k6/lab10-hl07-docker.sh`](../k6/lab10-hl07-docker.sh)** | Только стенд: **`./lab10-hl07-docker.sh up 0.5`** / **`up 1.0`** или **`logs`** (в stdout), если вы гоняете k6 вручную по шагам LAB9, без авто-матрицы. |
 
-**На hl11 (один раз настроили `lab10-stand.env`, дальше одна команда):**
+**На hl11 (`lab10-stand.env` уже в репо — при необходимости отредактируйте под свою таблицу):**
 
 ```bash
 cd ~/work/Labs_hls/zil/k6   # или ~/Labs_hls/zil/k6
 git pull
-cp lab10-stand.env.example lab10-stand.env
-# отредактируйте lab10-stand.env под свою таблицу (SSH, IP additional — см. п. 6.1)
 chmod +x lab10-hl11-k6-matrix.sh lab10-hl07-docker.sh run-lab10-full-matrix.sh
 ./lab10-hl11-k6-matrix.sh
 ```
 
-Файл **`lab10-stand.env`** в git не кладётся (`.gitignore`). Нужны **k6**, **ssh** на hl07 без запроса пароля в середине прогона (как в прошлых лабах), **python3** + matplotlib для PNG (или `SKIP_PLOT=1`).
+Нужны **k6**, **ssh** на hl07 без запроса пароля в середине прогона (как в прошлых лабах), **python3** + matplotlib для PNG (или `SKIP_PLOT=1`).
 
 Движок тот же: **[`k6/run-lab10-full-matrix.sh`](../k6/run-lab10-full-matrix.sh)** — его можно вызывать вручную с **`export DOCKER_SSH=…`** / **`BASE_URL=…`**, если не хотите `.env`-файл.
 
