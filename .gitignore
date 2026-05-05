@@ -38,5 +38,7 @@ google-services.json
 **/.gradle/
 **/.idea/
 *.log
+!zil/k6/reports-lab10-s2s/lab10-run-logs/
+!zil/k6/reports-lab10-s2s/lab10-run-logs/*.log
 hs_err_pid*.log
 replay_pid*.log

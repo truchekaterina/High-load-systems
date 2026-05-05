@@ -21,6 +21,9 @@ venv/
 *.log
 replay_pid*.log
 hs_err_pid*.log
+# LAB10: docker compose логи в артефактах k6
+!k6/reports-lab10-s2s/lab10-run-logs/
+!k6/reports-lab10-s2s/lab10-run-logs/*.log
 
 # Package files
 *.jar
