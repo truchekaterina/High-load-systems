@@ -39,6 +39,11 @@ services:
       SPRING_FLYWAY_CREATE_SCHEMAS: ${SPRING_FLYWAY_CREATE_SCHEMAS:-false}
       SPRING_JPA_SHOW_SQL: "false"
       SERVER_TOMCAT_THREADS_MAX: "50"
+      # LAB12: при деплое через compose укажите реальные bootstrap с ВМ (или тот же туннель к брокерам)
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-hl15.zil:9094,hl14.zil:9094}
+      SPRING_KAFKA_CONSUMER_GROUP_ID: ${SPRING_KAFKA_CONSUMER_GROUP_ID:-rental-app-lab12-hl07}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-hl07}
+      KAFKA_LISTENER_CONCURRENCY: ${KAFKA_LISTENER_CONCURRENCY:-3}
     ports:
       - "8083:8083"
     cpus: "${APP_CPUS:-1.0}"

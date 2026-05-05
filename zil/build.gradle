@@ -30,6 +30,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'org.postgresql:postgresql'
 
+    // LAB12: потребление сообщений из Kafka — https://www.baeldung.com/spring-kafka#consuming-messages
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
+
     // БАЗОВЫЙ тестовый стартер (JUnit 5, AssertJ, Mockito)
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
