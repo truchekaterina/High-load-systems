@@ -283,47 +283,45 @@ k6 run --summary-export reports-lab10-s2s/s2s_cpu10_mix00.json load-lab8-s2s.js
 
 ---
 
-## 8а. Матрица CPU 0.5 / 1.0 и смеси 5% / 50% / 95% одной командой
+## 8а. Матрица CPU 0.5 / 1.0 и смеси 5% / 50% / 95% (как в LAB9: **hl07** = Docker, **hl11** = k6)
 
-**Обычный порядок:** **Docker** — на ВМ приложений (**hl07**); **k6** — **на отдельной виртуалке** (например **hl11**). Скрипт **`run-lab10-full-matrix.sh`** запускают **только на машине с k6**; на hl07 достаточно работающего `docker compose` и входа по SSH с той ВМ.
+Та же логика, что в [LAB9_MANUAL_FULL_RU.md](LAB9_MANUAL_FULL_RU.md) (части 7–10): нагрузку и JSON делаете **с ВМ k6**, `docker compose` и лимиты CPU — **на ВМ приложений**. Чтобы не набирать `export …` каждый раз:
 
-Скрипт **[`k6/run-lab10-full-matrix.sh`](../k6/run-lab10-full-matrix.sh)** выполняет полный цикл: по SSH на hl07 — смена лимитов CPU и `docker compose up`; локально — три прогона **k6** на каждый уровень CPU → после каждого прогона **`docker compose logs app additional`** снова по SSH → в конце **`plot_lab8_reports.py`**.
+| Где | Файл | Зачем |
+|-----|------|--------|
+| **hl11** (k6) | **`lab10-stand.env`** | Один раз скопировать из **[`k6/lab10-stand.env.example`](../k6/lab10-stand.env.example)** и заполнить: `HL07_SSH`, `REMOTE_ZIL`, `BASE_URL` (узел с **8084**), при необходимости `APP_CHECK_URL`. |
+| **hl11** | **[`k6/lab10-hl11-k6-matrix.sh`](../k6/lab10-hl11-k6-matrix.sh)** | Полный цикл: по SSH на hl07 — **CPU + compose up + логи**; локально — **k6** × 6 и **`plot_lab8_reports.py`**. |
+| **hl07** (Docker) | **[`k6/lab10-hl07-docker.sh`](../k6/lab10-hl07-docker.sh)** | Только стенд: **`./lab10-hl07-docker.sh up 0.5`** / **`up 1.0`** или **`logs`** (в stdout), если вы гоняете k6 вручную по шагам LAB9, без авто-матрицы. |
 
-### На ВМ с k6 (hl11): одна команда, Docker по SSH на hl07
-
-На **отдельной ВМ с k6** (нужны **k6**, **ssh** на hl07, **python3** с matplotlib для графиков). **На hl07 этот скрипт не запускайте** — там нет смысла ставить k6, если нагрузка всегда с другой машины.
+**На hl11 (один раз настроили `lab10-stand.env`, дальше одна команда):**
 
 ```bash
 cd ~/work/Labs_hls/zil/k6   # или ~/Labs_hls/zil/k6
 git pull
-
-export DOCKER_SSH="hl@10.60.3.2"
-export REMOTE_ZIL="/home/hl/work/Labs_hls/zil"
-export BASE_URL="http://10.60.3.2:8084"
-export APP_CHECK_URL="http://10.60.3.2:8083/stats"
-chmod +x run-lab10-full-matrix.sh
-./run-lab10-full-matrix.sh
+cp lab10-stand.env.example lab10-stand.env
+# отредактируйте lab10-stand.env под свою таблицу (SSH, IP additional — см. п. 6.1)
+chmod +x lab10-hl11-k6-matrix.sh lab10-hl07-docker.sh run-lab10-full-matrix.sh
+./lab10-hl11-k6-matrix.sh
 ```
 
-**`10.60.3.2`** — пример внутреннего адреса **hl07**; на другом стенде замените по п. 6.1. `REMOTE_ZIL` и пользователь в `DOCKER_SSH` должны совпадать с тем, как вы реально заходите на ВМ с Docker. Ключ/пароль — как на прошлых лабах.
+Файл **`lab10-stand.env`** в git не кладётся (`.gitignore`). Нужны **k6**, **ssh** на hl07 без запроса пароля в середине прогона (как в прошлых лабах), **python3** + matplotlib для PNG (или `SKIP_PLOT=1`).
 
-На **hl07** локально: только чтобы контейнеры были подняты (как в разделах 5–8), скрипт матрицы там делает всё удалённо через `DOCKER_SSH`.
+Движок тот же: **[`k6/run-lab10-full-matrix.sh`](../k6/run-lab10-full-matrix.sh)** — его можно вызывать вручную с **`export DOCKER_SSH=…`** / **`BASE_URL=…`**, если не хотите `.env`-файл.
 
-Если **8083** с ВМ k6 недоступен: `export APP_CHECK_URL=`.
+**Что должно совпасть с LAB9:** `BASE_URL` — **IP ВМ, где слушает additional (8084)**; `HL07_SSH` / `REMOTE_ZIL` — как вы реально заходите на машину с **`docker compose`**.
 
-### Редко: Docker и k6 на одной машине
+Если **8083** с hl11 недоступен — в **`lab10-stand.env`** оставьте **`APP_CHECK_URL`** пустым (`export APP_CHECK_URL=`).
 
-Нужны **и** `docker compose`, **и** `k6` **на одной ВМ**. Если у вас **Docker на hl07**, а **k6 только на hl11**, этот блок **не нужен**.
+### Редко: Docker и k6 на одной ВМ
 
 ```bash
 cd ~/Labs_hls/zil/k6
-chmod +x run-lab10-full-matrix.sh
 ./run-lab10-full-matrix.sh
 ```
 
-При туннеле **только на 8084** на эту же машину можно оставить `BASE_URL=http://127.0.0.1:8084`. Иначе задайте `export BASE_URL=http://<IP>:8084`.
+`BASE_URL=http://127.0.0.1:8084`, если **8084** на этой же машине.
 
-**Результат** (после успешного прогона матрицы): `reports-lab10-s2s/s2s_cpu{05,10}_mix{05,50,95}.json`, логи в `reports-lab10-s2s/lab10-run-logs/`, PNG после `plot_lab8_reports.py`. Переменные `OUT_DIR`, `WARMUP_SEC`, `SKIP_PLOT` и т.д. — в шапке скрипта.
+**Результат** матрицы: `reports-lab10-s2s/s2s_cpu{05,10}_mix{05,50,95}.json`, логи в `reports-lab10-s2s/lab10-run-logs/`, при успехе — PNG. Переменные `OUT_DIR`, `WARMUP_SEC`, `SKIP_PLOT` и т.д. — в шапке `run-lab10-full-matrix.sh`.
 
 ---
 

@@ -5,3 +5,6 @@ reports/avg_vs_vus.png
 # Кэш Python — не коммитить
 __pycache__/
 *.pyc
+
+# Локальные адреса / SSH (LAB10)
+lab10-stand.env

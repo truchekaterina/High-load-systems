@@ -2,20 +2,17 @@
 # LAB10 / LAB8–9 S2S: CPU 0.5 и 1.0 × смеси STATS_SHARE 5% / 50% / 95%,
 # summary JSON, логи docker compose (app + additional), plot_lab8_reports.py.
 #
-# **Обычно:** Docker на ВМ приложений (hl07), k6 на **отдельной** ВМ — скрипт запускают **там, где k6**:
+# Как в LAB9 (Docker на hl07, k6 на hl11):
+#   1) На hl11: скопируйте lab10-stand.env.example → lab10-stand.env, подставьте IP/пути/SSH.
+#   2) ./lab10-hl11-k6-matrix.sh
+# На hl07 вручную (если без авто-матрицы): ./lab10-hl07-docker.sh up 0.5|1.0
 #
-#   export DOCKER_SSH="hl@10.60.3.2"
-#   export REMOTE_ZIL="/home/hl/work/Labs_hls/zil"
-#   export BASE_URL="http://10.60.3.2:8084"
-#   export APP_CHECK_URL="http://10.60.3.2:8083/stats"
-#   ./run-lab10-full-matrix.sh
+# Либо без файла — экспорт DOCKER_SSH / BASE_URL и этот скрипт (см. LAB10_MANUAL_FULL_RU.md).
 #
-# На hl07 k6 не нужен. 10.60.3.2 — пример IP hl07 в сети курса; свой IP/пользователь см. LAB10_MANUAL_FULL_RU.md.
-#
-# **Редко:** docker и k6 на одной машине — тогда DOCKER_SSH не задавайте и см. мануал.
+# **Редко:** docker и k6 на одной ВМ — DOCKER_SSH не задавайте.
 #
 # Переменные окружения (опционально):
-#   DOCKER_SSH      — если задан, docker compose и «logs» выполняются по SSH на эту ВМ (hl07)
+#   DOCKER_SSH, HL07_SSH — удалённый docker (достаточно одного; в lab10-stand.env задаётся HL07_SSH)
 #   REMOTE_ZIL      — каталог zil **на удалённой** ВМ (по умолчанию /home/hl/work/Labs_hls/zil)
 #   REMOTE_ENV_FILE — имя env-файла внутри REMOTE_ZIL (по умолчанию registry-tags-lab8-hl7.env)
 #   ZIL_ROOT        — при локальном docker: каталог zil (по умолчанию родитель этого скрипта)
@@ -26,6 +23,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ "${LAB10_USE_STAND_ENV:-}" == 1 ]]; then
+  if [[ ! -f "$SCRIPT_DIR/lab10-stand.env" ]]; then
+    echo "Нет файла $SCRIPT_DIR/lab10-stand.env — скопируйте из lab10-stand.env.example и заполните." >&2
+    exit 1
+  fi
+  set -a
+  # shellcheck disable=SC1091
+  source "$SCRIPT_DIR/lab10-stand.env"
+  set +a
+fi
+
 ZIL_ROOT="${ZIL_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 ENV_FILE="${ENV_FILE:-$ZIL_ROOT/registry-tags-lab8-hl7.env}"
 BASE_URL="${BASE_URL:-http://127.0.0.1:8084}"
@@ -38,7 +47,7 @@ WARMUP_SEC="${WARMUP_SEC:-45}"
 SKIP_PLOT="${SKIP_PLOT:-0}"
 APP_CHECK_URL="${APP_CHECK_URL:-http://127.0.0.1:8083/stats}"
 
-DOCKER_SSH="${DOCKER_SSH:-}"
+DOCKER_SSH="${DOCKER_SSH:-${HL07_SSH:-}}"
 REMOTE_ZIL="${REMOTE_ZIL:-/home/hl/work/Labs_hls/zil}"
 REMOTE_ENV_FILE="${REMOTE_ENV_FILE:-registry-tags-lab8-hl7.env}"
 
@@ -59,11 +68,11 @@ require_k6_or_hint() {
   fi
   echo "Нужна команда: k6 — нагрузку запускает **эта** машина; docker compose при DOCKER_SSH уходит по SSH на hl07." >&2
   if [[ -z "${DOCKER_SSH}" ]] && command -v docker >/dev/null 2>&1; then
-    echo "На hl07 k6 ставить не нужно. Выполните матрицу с **hl11** (или другой ВМ с k6), откуда есть ssh на hl07, например:" >&2
+    echo "На ВМ с Docker (hl07) k6 не нужен. Запустите скрипт на **ВМ с k6** (hl11 и т.п.), с ssh на hl07, например:" >&2
     echo '  export DOCKER_SSH="hl@10.60.3.2" REMOTE_ZIL="/home/hl/work/Labs_hls/zil"' >&2
     echo '  export BASE_URL="http://10.60.3.2:8084" APP_CHECK_URL="http://10.60.3.2:8083/stats"' >&2
     echo '  cd ~/work/Labs_hls/zil/k6  # или ~/Labs_hls/zil/k6' >&2
-    echo '  ./run-lab10-full-matrix.sh' >&2
+    echo "Либо: cp lab10-stand.env.example lab10-stand.env, заполните, ./lab10-hl11-k6-matrix.sh" >&2
   fi
   exit 1
 }
