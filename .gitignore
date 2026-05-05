@@ -33,6 +33,13 @@ google-services.json
 *history*
 *.local
 
+# LAB11 локальное (туннель)
+zil/scripts/kafka-ui-tunnel.pid
+
+# Личные пароли / заметки только для себя — не попадёт в коммиты
+zil/secrets/*
+!zil/secrets/README.md
+
 # Общие артефакты (дублирует zil/.gitignore при работе из корня)
 **/build/
 **/.gradle/
