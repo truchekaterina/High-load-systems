@@ -15,7 +15,8 @@ RUN ["java", "-classpath", "gradle/wrapper/gradle-wrapper.jar", "org.gradle.wrap
 FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 
-COPY --from=builder /app/build/libs/module1-1.0-SNAPSHOT.jar app.jar
+# Имя файла = {rootProject.name}-{version}.jar (см. settings.gradle и build.gradle version).
+COPY --from=builder /app/build/libs/zil-1.0-SNAPSHOT.jar app.jar
 
 EXPOSE 8083
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
