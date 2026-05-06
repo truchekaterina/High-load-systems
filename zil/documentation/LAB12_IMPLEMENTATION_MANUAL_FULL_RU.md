@@ -89,6 +89,102 @@ Kafka UI на ПК как `127.0.0.1:8080`; брокеры — `127.0.0.1:19094`
 - Партиции и `concurrency` настраиваете именно для этого топика: `kafka-topics --describe --topic hl07 ...`.
 - Пароль пользователя **`hl`** и прочие секреты — только из нижней части общей таблицы; **не** в git.
 
+### 1.3 Короткий SSH на Kafka-узлы + «SSH Targets» в Cursor/VS Code **без пароля**
+
+Открывать узлы можно так же, как вашу основную учебную ВМ: один раз описали хост в **OpenSSH config**, дальше в Cursor/VS Code — **Remote-SSH: Connect to Host…** (или палитра **SSH: Connect to Host…**) и выбираете, например, **`zil-hl15`**. Пароль не должен запрашиваться, если везде используете **один и тот же SSH-ключ** и этот ключ уже добавлен на **соответствующую** машину учётке **`hl`** (файл `~/.ssh/authorized_keys`). Пароля «в файл для автоподстановки» у OpenSSH **нет** — только ключ ([LAB11 §11.1–11.2](LAB11_MANUAL_FULL_RU.md)).
+
+#### Один файл конфигурации
+
+Тот же, что уже даёт вход без пароля на вашей ВМ с портом **2307**:
+
+- Windows: **`%USERPROFILE%\.ssh\config`**
+- Linux/macOS: **`~/.ssh/config`**
+
+В Cursor/VS Code можно открыть его командой палитры **Remote-SSH: Open SSH Configuration File…** → обычно тот же путь к пользовательскому `config`.
+
+#### Минимальные блоки для Kafka (режим без `LocalForward` в алиасе)
+
+Рекомендуется в связке со скриптом **`zil/scripts/start-kafka-ui-tunnel.ps1`** (локальные пробросы UI отдельно). Скопируйте блок **`Host zil-hl14` / `Host zil-hl15`** из [LAB11_MANUAL_FULL_RU.md §0.3 режим A](LAB11_MANUAL_FULL_RU.md) или используйте шаблон ниже.
+
+**Главное:** для **`zil-hl15`**, **`zil-hl14`** и для вашего алиса основной ВМ (**пример:** `zil-vm2307` на порт **2307**) укажите **одну и ту же пару**:
+
+- один и тот же **`IdentityFile`** (чаще всего тот файл, который вы уже указали для SSH Target вашей основной машины — без него редактор не сможет зайти «как обычно»);
+- **`IdentitiesOnly yes`**, чтобы клиент не перебирал чужие ключи и не сбивал вход.
+
+Пример со **всеми тремя** узлами в одном стиле (подставьте свой ключ и свой порт рабочей ВМ из таблицы):
+
+```sshconfig
+Host zil-vm2307
+    HostName hlssh.zil.digital
+    User hl
+    Port 2307
+    IdentityFile ~/.ssh/id_ed25519_zil_nopass
+    IdentitiesOnly yes
+
+Host zil-hl14
+    HostName hlssh.zil.digital
+    User hl
+    Port 2314
+    IdentityFile ~/.ssh/id_ed25519_zil_nopass
+    IdentitiesOnly yes
+
+Host zil-hl15
+    HostName hlssh.zil.digital
+    User hl
+    Port 2315
+    IdentityFile ~/.ssh/id_ed25519_zil_nopass
+    IdentitiesOnly yes
+```
+
+Отдельный ключ **без passphrase** только для курса и запись про `ssh-keygen`: [LAB11_MANUAL_FULL_RU.md §11.2](LAB11_MANUAL_FULL_RU.md). По смыслу то же — ключ в **authorized_keys** на сервере: [LAB6_PLAN_RU.md](LAB6_PLAN_RU.md) (SSH и доступ на ВМ).
+
+#### Если на `zil-hl15` всё ещё спрашивают пароль, а на `zil-vm2307` уже нет
+
+Значит, на узле за портом **2315** (фактический **`hl15`**) файл **`authorized_keys`** для пользователя **`hl`** ещё **не содержит** этого самого открытого ключа — на основную ВМ курс мог прописать ключ централизованно, на Kafka-узлы иногда нужно добавить один раз руками. Сделайте **одну** парольную сессию для копирования строки из вашего **`…pub`** в **`~/.ssh/authorized_keys`** на той машине (права `chmod 700 ~/.ssh` и `chmod 600 ~/.ssh/authorized_keys` — как в LAB6). То же проделайте для **`zil-hl14`**, если туда ходите отдельно.
+
+Проверка с ПК после сохранения `config`:
+
+```powershell
+ssh -o BatchMode=yes zil-hl15 hostname
+```
+
+При успешном выходном имени узла без запроса пароля конфигурация корректна.
+
+**Примеры после настройки:**
+
+```text
+ssh zil-hl15                    # то же по смыслу, что: ssh -p 2315 hl@hlssh.zil.digital
+ssh zil-hl14                    # второй узел Kafka
+ssh zil-hl15 docker node ls      # выполнить команду на удалённой машине без интерактивного сеанса
+```
+
+**Проверка партиций топика `hl07`** на уже открытом сеансе `zil-hl15` (bootstrap как в вашем успешном LAB11):
+
+```bash
+bin/kafka-topics.sh --describe --topic hl07 --bootstrap-server hl15.zil:9094
+```
+
+(Если утилиты нет локально на узле — `docker exec` в контейнер брокера, как в LAB11.)
+
+Комбинированный пример `config` чуть выше уже включает **`zil-vm2307`** на порт **2307** (Трюх Екатерина и аналоги). Если в таблице у вас **другой** SSH-порт рабочей ВМ — поменяйте только **`Port`** и при желании строку **`Host`**.
+
+Подключение из **Cursor / VS Code** тем же SSH Target’ом: `F1` → **Remote-SSH: Connect to Host…** (или **SSH: Connect to Host…**) → выберите **`zil-hl15`** / **`zil-hl14`** — список формируется из вашего пользовательского `config`.
+
+#### Скрипты из репозитория (PowerShell на ПК)
+
+В каталоге `zil/scripts/` есть обёртки, которые просто вызывают уже настроенный алиас (удобно из проводника / задач VS Code):
+
+- `ssh-zil-hl15.ps1` — вход на узел порта **2315** (`ssh zil-hl15`).
+- `ssh-zil-hl14.ps1` — вход на **2314** (`ssh zil-hl14`).
+
+Запуск из корня проекта:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\zil\scripts\ssh-zil-hl15.ps1
+```
+
+Автоматически пароль через `ssh`/Cursor не подставляется — нужен ключ в **`authorized_keys`** на целевой машине или одноразовый ручной вход (см. выше).
+
 ---
 
 ## 2. Что уже должно быть сделано до LAB12 (зацепки от LAB11)
@@ -103,6 +199,12 @@ PowerShell:
 
 ```powershell
 ssh -p 2315 -L 8080:127.0.0.1:8080 -L 19094:hl15.zil:9094 -L 19095:hl14.zil:9094 hl@hlssh.zil.digital
+```
+
+Если в `~/.ssh/config` уже заведён **`Host zil-hl15`** (см. §1.3), строка эквивалентна более короткой:
+
+```powershell
+ssh zil-hl15 -L 8080:127.0.0.1:8080 -L 19094:hl15.zil:9094 -L 19095:hl14.zil:9094
 ```
 
 **Зачем:** пока сеанс открыт — UI на `http://localhost:8080/` и Kafka CLI/Python на ПК могут ходить в `127.0.0.1:19094` / `127.0.0.1:19095`.
