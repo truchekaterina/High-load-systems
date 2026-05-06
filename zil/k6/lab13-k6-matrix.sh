@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# LAB13: полная матрица (4 прогона). Запускать на **ВМ с k6** (рядом с прокси).
+#
+# Подготовка:
+#   cp lab13-stand.env.example lab13-stand.env
+#   # отредактировать HL07_SSH, REMOTE_ZIL, BASE_URL, APP_CHECK_URL
+#   # в другом терминале: uvicorn в lab13-kafka-proxy
+#   ./lab13-k6-matrix.sh
+#
+set -euo pipefail
+export LAB13_USE_STAND_ENV=1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/run-lab13-kafka-proxy-matrix.sh" "$@"
