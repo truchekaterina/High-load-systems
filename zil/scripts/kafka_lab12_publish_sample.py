@@ -5,6 +5,7 @@
 # hl15.zil:9094, hl14.zil:9094 (как у Spring).
 # С ноутбука при туннеле LAB11 (§8.2): задайте KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:19094,127.0.0.1:19095
 # или KAFKA_PUBLISH_USE_TUNNEL=1.
+# DEL: KAFKA_OPERATION=DEL и KAFKA_USER_ID=<uuid>; при необходимости KAFKA_DEL_PAYLOAD_AS_OBJECT=1.
 
 from __future__ import annotations
 
@@ -39,16 +40,27 @@ def _resolve_topic() -> str:
     return (os.environ.get("KAFKA_TOPIC") or _DEFAULT_TOPIC).strip() or _DEFAULT_TOPIC
 
 
-def main() -> None:
-    bootstraps = _resolve_bootstrap_servers()
-    topic = _resolve_topic()
-
-    producer = KafkaProducer(
-        bootstrap_servers=bootstraps,
-        value_serializer=lambda v: json.dumps(v, ensure_ascii=False).encode("utf-8"),
-    )
-
-    msg = {
+def _build_message() -> dict:
+    op = (os.environ.get("KAFKA_OPERATION") or "POST").strip().upper()
+    if op == "DEL":
+        user_id = (os.environ.get("KAFKA_USER_ID") or "").strip()
+        if not user_id:
+            print(
+                "DEL requires KAFKA_USER_ID=<uuid>",
+                file=sys.stderr,
+            )
+            raise SystemExit(2)
+        as_object = os.environ.get("KAFKA_DEL_PAYLOAD_AS_OBJECT", "").strip() in (
+            "1",
+            "true",
+            "yes",
+        )
+        payload: object = {"id": user_id} if as_object else user_id
+        return {"entity": "USER", "operation": "DEL", "payload": payload}
+    if op != "POST":
+        print(f"Unsupported KAFKA_OPERATION={op!r} (use POST or DEL)", file=sys.stderr)
+        raise SystemExit(2)
+    return {
         "entity": "USER",
         "operation": "POST",
         "payload": {
@@ -57,10 +69,30 @@ def main() -> None:
             "phone": "+70000000099",
         },
     }
+
+
+def main() -> None:
+    bootstraps = _resolve_bootstrap_servers()
+    topic = _resolve_topic()
+    msg = _build_message()
+
+    producer = KafkaProducer(
+        bootstrap_servers=bootstraps,
+        value_serializer=lambda v: json.dumps(v, ensure_ascii=False).encode("utf-8"),
+    )
+
     producer.send(topic, value=msg).get(timeout=15)
     producer.flush()
     producer.close()
-    print("Sent one message to topic", topic, "via", ",".join(bootstraps), file=sys.stderr)
+    print(
+        "Sent one message to topic",
+        topic,
+        "via",
+        ",".join(bootstraps),
+        "op=",
+        msg.get("operation"),
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":

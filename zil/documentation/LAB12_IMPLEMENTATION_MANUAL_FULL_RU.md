@@ -477,6 +477,53 @@ cd zil
 
 ## 8. Проверка работоспособности: `kafka-console-producer` (официально из ТЗ)
 
+### 8.0 Ваш ПК (Windows/Linux) или ВМ приложения — продюсер (ТЗ: Python или `kafka-console-producer`)
+
+#### Вариант A: туннель LAB11 (как у вас в курсе)
+
+Отдельный терминал, пока он открыт — на ПК работают `127.0.0.1:19094` и `127.0.0.1:19095` (см. `LAB11_MANUAL_FULL_RU.md` §8.2 или `zil/scripts/start-kafka-ui-tunnel.ps1`).
+
+Дальше:
+
+- **`kafka-console-producer`** из своего каталога Kafka на ПК: одна строка JSON за раз и Enter;
+- или **Python** с `kafka-python`: в `bootstrap` указывайте `127.0.0.1:19094` и при необходимости второй порт (как в Java). Удобно через переменные окружения, как у Spring (см. `zil/scripts/kafka_lab12_publish_sample.py`).
+
+**Пример одного сообщения (POST), одна строка:**
+
+```json
+{"entity":"USER","operation":"POST","payload":{"fullName":"Отчёт LAB12","driverLicense":"RPT1234567","phone":"+79991112233"}}
+```
+
+**Второй кейс (DEL):** когда известен id из ответа API или `/clients`:
+
+```json
+{"entity":"USER","operation":"DEL","payload":"550e8400-e29b-41d4-a716-446655440000"}
+```
+
+или
+
+```json
+{"entity":"USER","operation":"DEL","payload":{"id":"550e8400-e29b-41d4-a716-446655440000"}}
+```
+
+(`USER` в сообщении маппится на клиента в роутере LAB12.)
+
+#### Вариант B: без туннеля — отправка с ВМ на порту **2307** (если сеть до брокеров открыта)
+
+На 2307 удобен venv под PEP 668:
+
+```bash
+cd ~/work/Labs_hls/zil
+python3 -m venv .venv-lab12
+source .venv-lab12/bin/activate
+pip install kafka-python
+export SPRING_KAFKA_BOOTSTRAP_SERVERS="hl15.zil:9094,hl14.zil:9094"
+export KAFKA_TOPIC="hl07"
+python3 scripts/kafka_lab12_publish_sample.py
+```
+
+В актуальной версии скрипта в репозитории bootstrap для ВМ задаётся через `SPRING_KAFKA_BOOTSTRAP_SERVERS` / `KAFKA_BOOTSTRAP_SERVERS` или разумный дефолт `hl15.zil:9094,hl14.zil:9094`; для ноутбука с туннелем — `export KAFKA_BOOTSTRAP_SERVERS="127.0.0.1:19094,127.0.0.1:19095"` или `export KAFKA_PUBLISH_USE_TUNNEL=1`. Подробности в комментариях в начале файла скрипта.
+
 ### 8.1 Подготовка
 
 Запустите нужный режим LAB11-туннеля (§2), чтобы `127.0.0.1:19094` отвечал.
@@ -525,7 +572,7 @@ bin/kafka-console-consumer.sh \
 
 ## 9. Простое Python-приложение клиент (вариант из ТЗ)
 
-**Где живёт файл:** например `zil/scripts/kafka_lab12_publish.py` (необязательно коммитить зависимости в проект Maven — только скрипт + комментарий с `pip`).
+**Где живёт файл:** `zil/scripts/kafka_lab12_publish_sample.py` (зависимости Maven не тянет — только `pip install kafka-python` в venv).
 
 На **локальной машине** (где возможен egress в Интернет для `pip`):
 
@@ -533,39 +580,35 @@ bin/kafka-console-consumer.sh \
 py -m pip install kafka-python
 ```
 
-Пример отправки нескольких JSON (ключ `value` уже bytes):
+**Переменные окружения (как у Spring + доп.):**
 
-```python
-from kafka import KafkaProducer
-import json
+| Переменная | Смысл |
+|------------|--------|
+| `KAFKA_BOOTSTRAP_SERVERS`, `SPRING_KAFKA_BOOTSTRAP_SERVERS` | Список брокеров через запятую. |
+| `KAFKA_PUBLISH_USE_TUNNEL` | `1` / `true` / `yes` → `127.0.0.1:19094,127.0.0.1:19095`. |
+| `KAFKA_TOPIC` | Топик (по умолчанию `hl07`). |
+| `KAFKA_OPERATION` | `POST` (по умолчанию) или `DEL`. |
+| `KAFKA_USER_ID` | Для `DEL`: UUID клиента; строка в `payload` или объект `{"id":...}` при `KAFKA_DEL_PAYLOAD_AS_OBJECT=1`. |
 
-BOOTSTRAPS = ["127.0.0.1:19094", "127.0.0.1:19095"]  # при LAB11-туннеле
-TOPIC = "hl07"
+**Зачем Python:** воспроизводимые тест-кейсы; POST/DEL через env без правки кода.
 
-producer = KafkaProducer(
-    bootstrap_servers=BOOTSTRAPS,
-    value_serializer=lambda v: json.dumps(v, ensure_ascii=False).encode("utf-8"),
-)
+**Зачем несколько портов в bootstrap:** симметрично Java `bootstrap-servers`; при метаданных с двумя брокерами — как в §8.2 LAB11.
 
-msg = {"entity": "USER", "operation": "POST", "payload": {
-    "fullName": "From Python",
-    "driverLicense": "PY9999999",
-    "phone": "+70123456789",
-}}
-producer.send(TOPIC, value=msg).get(timeout=10)
-producer.flush()
-producer.close()
-print("sent ok")
-```
-
-**Зачем Python:** воспроизводимые тест-кейсы, проще генерация разных тел, можно положить в отчёт как «воспроизведение LAB12».
-
-**Зачем несколько порта в BOOTSTRAPS:** симметрично Java `bootstrap-servers`; при одном упавшем туннеле может помочь fallback (редко нужно, если оба живы из §8.2 LAB11).
-
-Запуск:
+Запуск с ПК при открытом туннеле:
 
 ```powershell
-python zil/scripts/kafka_lab12_publish.py
+$env:KAFKA_PUBLISH_USE_TUNNEL="1"
+python zil/scripts/kafka_lab12_publish_sample.py
+```
+
+Удаление клиента по id:
+
+```powershell
+$env:KAFKA_PUBLISH_USE_TUNNEL="1"
+$env:KAFKA_DEL_PAYLOAD_AS_OBJECT="1"
+$env:KAFKA_OPERATION="DEL"
+$env:KAFKA_USER_ID="550e8400-e29b-41d4-a716-446655440000"
+python zil/scripts/kafka_lab12_publish_sample.py
 ```
 
 ---
