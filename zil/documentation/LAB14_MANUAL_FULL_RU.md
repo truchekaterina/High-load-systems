@@ -357,7 +357,7 @@ spec:
     - name: http
       port: 8083
       targetPort: 8083
-      nodePort: 31083
+      nodePort: 32083
 ---
 apiVersion: v1
 kind: Service
@@ -372,7 +372,7 @@ spec:
     - name: http
       port: 8084
       targetPort: 8084
-      nodePort: 31084
+      nodePort: 32084
 ```
 
 ---
@@ -430,20 +430,20 @@ kubectl -n hl07 port-forward service/zil-additional-nodeport 18084:8084
 На `hl07`:
 
 ```bash
-curl -I http://127.0.0.1:31083/swagger-ui/index.html
-curl -I http://127.0.0.1:31084/swagger-ui/index.html
+curl -I http://127.0.0.1:32083/swagger-ui/index.html
+curl -I http://127.0.0.1:32084/swagger-ui/index.html
 ```
 
 Если открываете из локального браузера, сделайте SSH туннель:
 
 ```bash
-ssh -p 2307 -L 31083:127.0.0.1:31083 -L 31084:127.0.0.1:31084 hl@hlssh.zil.digital
+ssh -p 2307 -L 32083:127.0.0.1:32083 -L 32084:127.0.0.1:32084 hl@hlssh.zil.digital
 ```
 
 После этого:
 
-- `http://127.0.0.1:31083/swagger-ui/index.html`
-- `http://127.0.0.1:31084/swagger-ui/index.html`
+- `http://127.0.0.1:32083/swagger-ui/index.html`
+- `http://127.0.0.1:32084/swagger-ui/index.html`
 
 ---
 

@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zil-app
+  namespace: hl07
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zil-app
+  template:
+    metadata:
+      labels:
+        app: zil-app
+    spec:
+      imagePullSecrets:
+        - name: dockerhub-regcred
+      containers:
+        - name: app
+          image: docker.io/rinakt/zil-app:lab9
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8083
+          env:
+            - name: DBHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: DB_HOST
+            - name: DBPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: DB_PORT
+            - name: DBNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: DB_NAME
+            - name: SCHEMANAME
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: DB_SCHEMA
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: DB_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zil-db-secret
+                  key: DB_PASSWORD
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: KAFKA_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: KAFKA_TOPIC
+            - name: SPRING_KAFKA_CONSUMER_GROUP_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: KAFKA_CONSUMER_GROUP_ID
+            - name: KAFKA_LISTENER_CONCURRENCY
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: KAFKA_LISTENER_CONCURRENCY
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zil-additional
+  namespace: hl07
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zil-additional
+  template:
+    metadata:
+      labels:
+        app: zil-additional
+    spec:
+      imagePullSecrets:
+        - name: dockerhub-regcred
+      containers:
+        - name: additional
+          image: docker.io/rinakt/zil-additional:lab10
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8084
+          env:
+            - name: MAIN_SERVICE_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: MAIN_SERVICE_BASE_URL
+            - name: SERVER_PORT
+              value: "8084"
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
