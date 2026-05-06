@@ -14,11 +14,28 @@
 #
 # Прокси (**uvicorn**) должен быть уже запущен с **тем же KAFKA_TOPIC**, что и app (обычно **hl07-lab13** из lab13-stand.env).
 #
+# Сеть: при **DOCKER_SSH** по умолчанию **LAB13_STAND_ACCESS=auto** — если с ВМ k6 не достучаться до IP в BASE_URL,
+# матрица сама поднимает SSH LocalForward на **127.0.0.1:28083** (app) и **:28084** (additional).
+#
 # Или напрямую этот скрипт с экспортом переменных (без lab13-stand.env — см. пример в репозитории).
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+LAB13_TUNNEL_PID=""
+LAB13_TUNNEL_STARTED=0
+
+cleanup_lab13_tunnel() {
+  if [[ "${LAB13_TUNNEL_STARTED}" == "1" ]] && [[ -n "${LAB13_TUNNEL_PID}" ]] && kill -0 "${LAB13_TUNNEL_PID}" 2>/dev/null; then
+    kill "${LAB13_TUNNEL_PID}" 2>/dev/null || true
+    wait "${LAB13_TUNNEL_PID}" 2>/dev/null || true
+  fi
+  LAB13_TUNNEL_STARTED=0
+  LAB13_TUNNEL_PID=""
+}
+
+trap cleanup_lab13_tunnel EXIT
 
 if [[ "${LAB13_USE_STAND_ENV:-}" == 1 ]]; then
   if [[ ! -f "$SCRIPT_DIR/lab13-stand.env" ]]; then
@@ -67,6 +84,12 @@ LAB13_PANEL_CONC="${LAB13_PANEL_CONC:-2}"
 # 0 = только 4 ячейки ТЗ (§0.8); 1 = ещё три STATS_SHARE на ячейку (графики как LAB8).
 LAB13_MIX_PANELS="${LAB13_MIX_PANELS:-0}"
 
+# Доступ к стенду с ВМ k6: auto = сначала прямой BASE_URL, иначе SSH LocalForward на 127.0.0.1.
+LAB13_TUNNEL_APP_PORT="${LAB13_TUNNEL_APP_PORT:-28083}"
+LAB13_TUNNEL_ADD_PORT="${LAB13_TUNNEL_ADD_PORT:-28084}"
+LAB13_REMOTE_READY_SEC="${LAB13_REMOTE_READY_SEC:-180}"
+LAB13_REQUIRE_STAND_HEALTH="${LAB13_REQUIRE_STAND_HEALTH:-1}"
+
 export TARGET_VUS
 export DURATION
 export BASE_URL
@@ -113,9 +136,24 @@ if [[ -z "${DOCKER_SSH}" ]]; then
   fi
 else
   require ssh
+  LAB13_STAND_ACCESS="${LAB13_STAND_ACCESS:-auto}"
+fi
+
+if [[ -z "${DOCKER_SSH}" ]]; then
+  LAB13_STAND_ACCESS="${LAB13_STAND_ACCESS:-direct}"
 fi
 
 mkdir -p "$OUT_DIR" "$LOG_DIR"
+
+verify_remote_zil_dir() {
+  [[ -z "${DOCKER_SSH}" ]] && return 0
+  ssh -o BatchMode=yes -o ConnectTimeout=15 "$DOCKER_SSH" "test -d $(printf '%q' "$REMOTE_ZIL")" || {
+    echo "LAB13: на ${DOCKER_SSH} нет каталога REMOTE_ZIL=${REMOTE_ZIL} (git clone или поправьте путь)." >&2
+    exit 1
+  }
+}
+
+verify_remote_zil_dir
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════════"
@@ -126,6 +164,9 @@ else
 fi
 echo "  Папка отчётов: ${OUT_DIR}"
 echo "  Топик Kafka (прокси uvicorn должен совпадать): ${KAFKA_TOPIC:-hl07-lab13}"
+if [[ -n "${DOCKER_SSH:-}" ]]; then
+  echo "  Доступ к app/additional с этой ВМ: LAB13_STAND_ACCESS=${LAB13_STAND_ACCESS} (auto=tunnel при недоступном IP)"
+fi
 echo "═══════════════════════════════════════════════════════════════════"
 echo ""
 
@@ -157,6 +198,109 @@ check_proxy() {
   }
 }
 
+wait_remote_stack_ready() {
+  [[ -z "${DOCKER_SSH}" ]] && return 0
+  local max="${LAB13_REMOTE_READY_SEC}"
+  local i=0
+  echo ">>> Ожидание HTTP 200 на ВМ ${DOCKER_SSH}:8083/stats и :8084/additional/stats (до ${max}s)..."
+  while [[ "$i" -lt "$max" ]]; do
+    local a d
+    a="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "$DOCKER_SSH" "curl -sS -o /dev/null -w '%{http_code}' --max-time 12 'http://127.0.0.1:8083/stats' 2>/dev/null || echo 000")"
+    d="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "$DOCKER_SSH" "curl -sS -o /dev/null -w '%{http_code}' --max-time 12 'http://127.0.0.1:8084/additional/stats' 2>/dev/null || echo 000")"
+    if [[ "$a" == "200" && "$d" == "200" ]]; then
+      echo ">>> удалённый стенд отвечает: app=${a} additional=${d}"
+      return 0
+    fi
+    if [[ $((i % 15)) -eq 0 ]]; then
+      echo "    ... ещё не готово: app=${a} additional=${d} (${i}s / ${max}s)"
+    fi
+    sleep 3
+    i=$((i + 3))
+  done
+  echo "LAB13: за ${max}s на ${DOCKER_SSH} не получили 200 на app/additional." >&2
+  echo "    REMOTE_ZIL=${REMOTE_ZIL}; смотрите логи:" >&2
+  echo "    ssh ${DOCKER_SSH} 'cd $(printf '%q' "$REMOTE_ZIL") && docker compose --env-file ${REMOTE_ENV_FILE} --env-file ${REMOTE_ENV_TOPIC_FILE} logs app additional --tail 120'" >&2
+  exit 1
+}
+
+start_stand_tunnel() {
+  [[ "${LAB13_TUNNEL_STARTED}" == "1" ]] && return 0
+  if command -v ss >/dev/null 2>&1; then
+    if ss -tln 2>/dev/null | grep -qE ":${LAB13_TUNNEL_APP_PORT}\\s"; then
+      echo "LAB13: порт ${LAB13_TUNNEL_APP_PORT} занят — закройте процесс или задайте LAB13_TUNNEL_APP_PORT." >&2
+      exit 1
+    fi
+    if ss -tln 2>/dev/null | grep -qE ":${LAB13_TUNNEL_ADD_PORT}\\s"; then
+      echo "LAB13: порт ${LAB13_TUNNEL_ADD_PORT} занят." >&2
+      exit 1
+    fi
+  fi
+  ssh -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o BatchMode=yes \
+    -L "127.0.0.1:${LAB13_TUNNEL_APP_PORT}:127.0.0.1:8083" \
+    -L "127.0.0.1:${LAB13_TUNNEL_ADD_PORT}:127.0.0.1:8084" \
+    -N "$DOCKER_SSH" &
+  LAB13_TUNNEL_PID=$!
+  LAB13_TUNNEL_STARTED=1
+  sleep 1
+}
+
+curl_stand_codes() {
+  local app_code add_code
+  app_code="$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "${APP_CHECK_URL}" 2>/dev/null || echo 000)"
+  add_code="$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "${BASE_URL}/additional/stats" 2>/dev/null || echo 000)"
+  echo "${app_code} ${add_code}"
+}
+
+ensure_k6_stand_reachable() {
+  local mode="${LAB13_STAND_ACCESS}"
+
+  if [[ "$mode" == "tunnel" ]]; then
+    start_stand_tunnel
+    export BASE_URL="http://127.0.0.1:${LAB13_TUNNEL_ADD_PORT}"
+    export APP_CHECK_URL="http://127.0.0.1:${LAB13_TUNNEL_APP_PORT}/stats"
+    local tc
+    tc="$(curl_stand_codes)"
+    if [[ "$tc" != "200 200" ]]; then
+      echo "LAB13: туннель поднят, но localhost даёт «${tc}» (ожидалось 200 200)." >&2
+      exit 1
+    fi
+    echo ">>> k6 → стенд только через туннель: BASE_URL=${BASE_URL}"
+    return 0
+  fi
+
+  if [[ "$mode" == "direct" ]] || [[ -z "${DOCKER_SSH}" ]]; then
+    local dc
+    dc="$(curl_stand_codes)"
+    if [[ "$dc" == "200 200" ]]; then
+      echo ">>> k6 видит стенд напрямую (${APP_CHECK_URL})."
+      return 0
+    fi
+    echo "LAB13: прямой доступ к стенду не работает (коды ${dc})." >&2
+    echo "    Ожидали: APP_CHECK_URL=${APP_CHECK_URL} и ${BASE_URL}/additional/stats" >&2
+    [[ "${LAB13_REQUIRE_STAND_HEALTH}" == "1" ]] && exit 1
+    return 0
+  fi
+
+  # auto + DOCKER_SSH
+  local dc
+  dc="$(curl_stand_codes)"
+  if [[ "$dc" == "200 200" ]]; then
+    echo ">>> k6 видит стенд напрямую (LAB13_STAND_ACCESS=auto, IP из lab13-stand.env)."
+    return 0
+  fi
+
+  echo ">>> Прямой доступ с ВМ k6 не работает (коды ${dc}); поднимаю SSH-туннель → :${LAB13_TUNNEL_APP_PORT} / :${LAB13_TUNNEL_ADD_PORT}"
+  start_stand_tunnel
+  export BASE_URL="http://127.0.0.1:${LAB13_TUNNEL_ADD_PORT}"
+  export APP_CHECK_URL="http://127.0.0.1:${LAB13_TUNNEL_APP_PORT}/stats"
+  dc="$(curl_stand_codes)"
+  if [[ "$dc" != "200 200" ]]; then
+    echo "LAB13: через туннель всё ещё не 200 200 (коды ${dc}). SSH или контейнеры на ${DOCKER_SSH}." >&2
+    exit 1
+  fi
+  echo ">>> k6 → стенд через туннель: BASE_URL=${BASE_URL}"
+}
+
 set_cpu_conc_and_up() {
   local cpus="$1"
   local conc="$2"
@@ -168,13 +312,13 @@ set_cpu_conc_and_up() {
   compose up -d --force-recreate app additional
   echo ">>> прогрев ${WARMUP_SEC}s..."
   sleep "$WARMUP_SEC"
+  wait_remote_stack_ready
+  ensure_k6_stand_reachable
 
-  if [[ -n "${APP_CHECK_URL}" ]]; then
-    echo -n ">>> check app: "
-    curl -sS -o /dev/null -w "%{http_code}\n" "$APP_CHECK_URL" || true
-  fi
+  echo -n ">>> check app: "
+  curl -sS -o /dev/null -w "%{http_code}\n" --max-time 12 "${APP_CHECK_URL}" || echo "000"
   echo -n ">>> check additional: "
-  curl -sS -o /dev/null -w "%{http_code}\n" "${BASE_URL}/additional/stats" || true
+  curl -sS -o /dev/null -w "%{http_code}\n" --max-time 12 "${BASE_URL}/additional/stats" || echo "000"
 }
 
 run_k6_mix_export_logs() {
