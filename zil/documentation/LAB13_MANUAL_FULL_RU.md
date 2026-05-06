@@ -1,6 +1,6 @@
 # LAB13 — единое руководство: ТЗ, пошаговый план и реализация
 
-Топик эксперимента LAB13: **`hl07-lab13`** (см. **`registry-tags-lab13-topic.env`**), **ровно 2 партиции** по ТЗ. **БД **`hl7`** в выдаче таблицы без изменений. Этот файл — **единый** гайд: **техзадание** и **§0 — куда подключиться и что набрать**. Ветка **`LAB13_PLAN_RU.md`** — редирект сюда.
+Топик эксперимента LAB13: **`hl07-lab13`** (см. **`registry-tags-lab13-topic.env`**), **ровно 2 партиции** по ТЗ. **БД **`hl7`** в выдаче таблицы без изменений. Этот файл — **единый** гайд: **техзадание**, **§0 — куда подключиться и что набрать**, в т.ч. **`§0.0.1`** пошагово по ВМ (**2314/2315 → 2307 → 2311**). Ветка **`LAB13_PLAN_RU.md`** — редирект сюда.
 
 Документ задаёт **полное техническое задание и пошаговую реализацию** лабораторной LAB13 на базе стенда LAB12: нагрузочное тестирование с **переносом операций записи в Kafka**, переходом консьюмера на [**batch listener**](https://docs.spring.io/spring-kafka/reference/kafka/receiving-messages/listener-annotation.html#batch-listeners), сбором **графиков** для сочетаний **CPU 0.5 / 1.0** (одинаково для **`app`** и **`additional`**) и **`@KafkaListener(concurrency)` = 1 и 2** при **ровно двух партициях** топика.
 
@@ -14,7 +14,7 @@
 
 | § | Раздел |
 |---|--------|
-| **0** | **Пошаговый план** — куда SSH, что экспортировать, **4 прогона** матрицы, curl и k6 |
+| **0** | **Пошаговый план** — **`§0.0.1`** команды по ВМ (Kafka → приложение → k6), далее детали SSH и матрица |
 | 1 | Выдача, ВМ, топик |
 | 2.2 | **Прокси + k6** — архитектура, REST, env, запуск на **2311**, сценарий k6 |
 | 2.3 | Batch `@KafkaListener` |
@@ -40,6 +40,129 @@
 
 **Цепочка данных:** **k6** (ВМ **2311**) → **HTTP POST** → **прокси** (тоже **2311**) → **Kafka** → **zil-app** (Docker на ВМ **2307**) → **PostgreSQL** (схема/БД **`hl7`**).
 
+### 0.0.1. Порядок по ВМ: куда зайти и что вводить
+
+Делайте **в таком порядке** (один раз подготовка, затем цикл матрицы в §0.8). Путь к клону в примерах — **`~/work/Labs_hls`**; если у вас другой каталог (например **`~/katya/Labs_hls`**), замените во всех **`cd`**.
+
+**Общее правило:** имя топика и число партиций должны совпадать с ТЗ: **`hl07-lab13`**, **`PartitionCount: 2`**. Переменная **`KAFKA_TOPIC`** у прокси на **2311** и у контейнера **`app`** на **2307** должна быть **одинаковой** (для LAB13 — через **`registry-tags-lab13-topic.env`** на **2307** и **`export KAFKA_TOPIC=hl07-lab13`** на **2311**). Учебный топик **`hl07`** из таблицы для LAB11–12 **не уменьшают** по партициям — см. §0.5.
+
+---
+
+**1) ВМ Kafka — SSH `2314` или `2315`**
+
+**Задача:** создать топик **`hl07-lab13`** с **2** партициями (если ещё нет) и убедиться по **`describe`**.
+
+```bash
+ssh -p 2314 hl@hlssh.zil.digital
+# при необходимости: -p 2315
+cd ~/work/Labs_hls/zil/scripts
+```
+
+Если с этой ВМ **не резолвятся** имена брокеров — задайте bootstrap по **IP** из §0.1 (**`10.60.3.12:9094,10.60.3.13:9094`**). На кластере с **двумя** брокерами иногда требуют **`REPLICATION_FACTOR=2`** — иначе создание топика может отказать; тогда:
+
+```bash
+export KAFKA_BOOTSTRAP_SERVERS=10.60.3.12:9094,10.60.3.13:9094
+REPLICATION_FACTOR=2 bash ./kafka_lab13_create_topic_2_partitions.sh
+```
+
+Или по имени (если DNS работает):
+
+```bash
+export KAFKA_BOOTSTRAP_SERVERS=hl15.zil:9094
+bash ./kafka_lab13_create_topic_2_partitions.sh
+```
+
+В выводе должно быть **`PartitionCount: 2`**. Альтернатива — создать топик с **2** партициями в **Kafka UI** (как в LAB11).
+
+---
+
+**2) ВМ приложений / Docker — SSH `2307`**
+
+**Задача:** актуальный код ветки LAB13, образ **`app`**, контейнеры **`app`** + **`additional`** с **двумя** env-файлами (JDBC + топик LAB13).
+
+```bash
+ssh -p 2307 hl@hlssh.zil.digital
+cd ~/work/Labs_hls/zil
+git fetch origin && git switch docs/lab13-kafka-k6-batch && git pull --ff-only
+
+docker compose build app
+export ZIL_APP_IMAGE=rental/zil-app:lab13-local
+```
+
+**Перед каждой ячейкой матрицы** (сочетание CPU и **`KAFKA_LISTENER_CONCURRENCY`**) задайте переменные и пересоздайте контейнеры:
+
+```bash
+export APP_CPUS=0.5 ADDITIONAL_CPUS=0.5
+export KAFKA_LISTENER_CONCURRENCY=1
+
+docker compose --env-file registry-tags-lab8-hl7.env --env-file registry-tags-lab13-topic.env up -d --force-recreate app additional
+
+sleep 45
+curl -sS -o /dev/null -w "app %{http_code}\n" http://127.0.0.1:8083/stats
+curl -sS -o /dev/null -w "additional %{http_code}\n" http://127.0.0.1:8084/additional/stats
+```
+
+Меняйте только **`APP_CPUS` / `ADDITIONAL_CPUS`** (**всегда одинаково** друг другу: **0.5** или **1.0**) и **`KAFKA_LISTENER_CONCURRENCY`** (**1** или **2**); команду **`docker compose … up`** повторяйте. Детали четырёх прогонов — таблица в §0.8.
+
+Проверка, что сообщения доходят: **`docker compose logs -f app`** (ожидаем обработку Kafka-команд после **curl**/k6 с **2311**).
+
+---
+
+**3) ВМ нагрузки / k6 — SSH `2311`**
+
+**Задача:** поднять **REST-прокси** (Kafka Producer в **`hl07-lab13`**) и запускать **k6** на **`http.post`** в этот прокси.
+
+Подключение:
+
+```bash
+ssh -p 2311 hl@hlssh.zil.digital
+cd ~/work/Labs_hls/zil
+git switch docs/lab13-kafka-k6-batch && git pull --ff-only
+```
+
+Окружение для прокси (bootstrap должен **достигаться с 2311**, порт брокера на курсе часто **9094**):
+
+```bash
+export KAFKA_BOOTSTRAP_SERVERS="hl15.zil:9094,hl14.zil:9094"
+# при необходимости:
+# export KAFKA_BOOTSTRAP_SERVERS="10.60.3.12:9094,10.60.3.13:9094"
+
+export KAFKA_TOPIC=hl07-lab13
+export PROXY_URL="http://127.0.0.1:18080/publish"
+```
+
+Запуск прокси (**venv**, команды совпадают с **`zil/lab13-kafka-proxy/README.md`**):
+
+```bash
+cd ~/work/Labs_hls/zil/lab13-kafka-proxy
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --host 127.0.0.1 --port 18080
+```
+
+В **отдельном** сеансе SSH на **2311** — проверка и нагрузка:
+
+```bash
+curl -sS -X POST http://127.0.0.1:18080/publish \
+  -H 'Content-Type: application/json' \
+  -d '{"entity":"USER","operation":"POST","payload":{"fullName":"curl-check","driverLicense":"CRL-001","phone":"+70000000001"}}'
+```
+
+**k6** (на **2311**, пока на **2307** уже поднята нужная конфигурация матрицы и выдержана пауза прогрева):
+
+```bash
+cd ~/work/Labs_hls/zil/k6
+mkdir -p reports-lab13
+export PROXY_URL="http://127.0.0.1:18080/publish"
+export KAFKA_TOPIC=hl07-lab13
+k6 run --summary-export reports-lab13/summary_CPU05_conc1.json load-lab13-kafka-proxy.js
+```
+
+Имена **`summary_*.json`** меняйте под каждую ячейку (§0.8). Прокси обычно **оставляют запущенным** на время всей серии из четырёх прогонов; между прогонами переконфигурируете только **2307**.
+
+---
+
 ### 0.1. Ваши постоянные данные (подставляйте в команды)
 
 | Что | Значение |
@@ -59,12 +182,22 @@
 
 ### 0.2. Git: ветка и фиксация работы
 
-На машине, где лежит клон (ваш ПК или **2307**):
+Рабочая ветка с материалами LAB13 в репозитории курса: **`docs/lab13-kafka-k6-batch`**.
+
+На машине, где лежит клон (ваш ПК или **2307** / **2311**):
+
+```bash
+cd ~/work/Labs_hls
+git fetch origin && git checkout docs/lab13-kafka-k6-batch && git pull --ff-only
+```
+
+Если вы **продолжаете разработку** от состояния LAB12 и ведёте **свою** ветку (имя придумайте сами, чтобы не пересекаться с **`docs/lab13-kafka-k6-batch`** на сервере):
 
 ```bash
 cd ~/work/Labs_hls
 git fetch origin && git checkout docs/lab12-kafka-consumer && git pull --ff-only
-git checkout -b docs/lab13-kafka-batch-load-testing
+git checkout -b my-lab13-feature
+# далее: коммиты; при необходимости git push -u origin my-lab13-feature
 ```
 
 После изменений:
@@ -78,7 +211,7 @@ git commit -m "docs(lab13): …"
 
 ### 0.3. Что **надо написать в коде** до полноценной сдачи
 
-Пока пункты не готовы — шаги **0.5–0.8** являются проверкой «как должно быть»; **curl** и **k6** не сработают, пока нет рабочего прокси и файла сценария k6.
+Пока пункты не готовы — шаги **`§0.0.1`**, **0.5–0.8** являются проверкой «как должно быть»; **curl** и **k6** не сработают, пока нет рабочего прокси и файла сценария k6.
 
 Краткая таблица со ссылками на теорию ниже по документу:
 
@@ -120,7 +253,7 @@ git commit -m "docs(lab13): …"
 
    ```bash
    cd ~/work/Labs_hls/zil
-   git switch docs/lab13-kafka-batch-load-testing
+   git switch docs/lab13-kafka-k6-batch
    ```
 
 3. После изменений Java-кода пересоберите образ **app** (пример тега):
@@ -166,11 +299,12 @@ git commit -m "docs(lab13): …"
 
 ```bash
 ssh -p 2314 hl@hlssh.zil.digital
-cd ~/kafka_2.13-*   # как у вас в LAB11
+# Скрипт из клона — путь поправьте под свой home:
+cd ~/work/Labs_hls/zil/scripts
 export KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-hl15.zil:9094}"
-# если скрипт лежит в клоне:
-bash ~/katya/Labs_hls/zil/scripts/kafka_lab13_create_topic_2_partitions.sh
-bin/kafka-topics.sh --describe --topic hl07-lab13 --bootstrap-server "$KAFKA_BOOTSTRAP_SERVERS"
+bash ./kafka_lab13_create_topic_2_partitions.sh
+# при необходимости describe вручную из каталога Kafka (LAB11):
+# cd ~/kafka_2.13-* && bin/kafka-topics.sh --describe --topic hl07-lab13 --bootstrap-server "$KAFKA_BOOTSTRAP_SERVERS"
 ```
 
 Ожидается **`PartitionCount: 2`**. Проверка в **Kafka UI**: открыть топик **`hl07-lab13`** — **Partitions: 2**.
@@ -231,6 +365,7 @@ docker compose logs -f app
 cd ~/work/Labs_hls/zil/k6
 mkdir -p reports-lab13
 export PROXY_URL="http://127.0.0.1:18080/publish"
+export KAFKA_TOPIC=hl07-lab13
 k6 run --summary-export reports-lab13/summary_CPU05_conc1.json load-lab13-kafka-proxy.js
 ```
 
@@ -317,12 +452,12 @@ flowchart LR
 
 | Шаг | Где | Действие |
 |-----|-----|----------|
-| 1 | **2307** | Стенд **`app`** + **`additional`**, топик LAB13 **`hl07-lab13`** (второй **`--env-file registry-tags-lab13-topic.env`**), **batch** consumer; пересборка **`app`** при необходимости |
-| 2 | На узле **Kafka** (2314/2315 или CLI из LAB11) | Создать **`hl07-lab13`** с **`PartitionCount = 2`** (`zil/scripts/kafka_lab13_create_topic_2_partitions.sh`), проверить describe / UI (см. §2.4). |
-| 3 | **2311** (`10.60.3.8`) | Поднять **REST‑прокси** (venv + код из **`zil/lab13-kafka-proxy/`** когда появится, или временный скрипт). Задать **`KAFKA_BOOTSTRAP_SERVERS`** / **`KAFKA_TOPIC`**. Слушать **`127.0.0.1:ВАШ_ПОРТ`**. |
-| 4 | **2311** | **`curl`** на **`POST /publish`** — проверить **200**. В логах **`app`** на **2307** — **`Kafka command`**. |
-| 5 | **2311** | Запуск **k6** с **`zil/k6/load-lab13-kafka-proxy.js`**, переменная **`PROXY_URL=http://127.0.0.1:ВАШ_ПОРТ/publish`**. |
-| 6 | **2307** | Для каждой ячейки матрицы (§2.6): синхронно **`APP_CPUS`/`ADDITIONAL_CPUS`** и **`KAFKA_LISTENER_CONCURRENCY`** → **`compose up`** → прогреть → k6 из шага 5 → сохранить JSON/PDF графики. |
+| 1 | Узел **Kafka** (SSH **2314**/**2315** или CLI из LAB11) | Создать **`hl07-lab13`** с **`PartitionCount = 2`** (`zil/scripts/kafka_lab13_create_topic_2_partitions.sh` или UI), проверить describe (§0.5, §2.4). |
+| 2 | **2307** | Стенд **`app`** + **`additional`**, топик LAB13 **`hl07-lab13`** (второй **`--env-file registry-tags-lab13-topic.env`**), **batch** consumer; **`docker compose build app`** при смене кода. |
+| 3 | **2311** (`10.60.3.8`) | Поднять **REST‑прокси** (**`zil/lab13-kafka-proxy/`**, см. **`README`**): **`KAFKA_BOOTSTRAP_SERVERS`**, **`KAFKA_TOPIC=hl07-lab13`**, слушать **`127.0.0.1:ВАШ_ПОРТ`** (например **18080**). |
+| 4 | **2311** | **`curl`** на **`POST /publish`** — **200**; на **2307** в логах **`app`** — **`Kafka command`**. |
+| 5 | **2311** | **k6**: **`PROXY_URL`**, опционально **`KAFKA_TOPIC`**, файл **`zil/k6/load-lab13-kafka-proxy.js`**, **`--summary-export`**. |
+| 6 | **2307** ↔ **2311** | Для **каждой** ячейки матрицы (§2.6 / §0.8): на **2307** **`APP_CPUS`/`ADDITIONAL_CPUS`** и **`KAFKA_LISTENER_CONCURRENCY`** → **`compose up`** → прогрев → на **2311** **k6** → сохранить JSON и графики. |
 
 **Не нужно на 2311:** пересборка расширяемого **k6 с xk6-kafka**.
 
@@ -568,9 +703,11 @@ docker compose --env-file registry-tags-lab8-hl7.env --env-file registry-tags-la
 
 ## 5. Запуск матрицы (пример порядка на **ВМ приложений 2307**)
 
+Сводный сценарий **по всем ВМ** (сначала Kafka, затем **2307**, затем прокси и k6 на **2311**) — в **`§0.0.1`**. Ниже — компактные блоки команд для **§5** без повторов.
+
 ```bash
 cd ~/work/Labs_hls/zil
-git switch docs/lab13-kafka-batch-load-testing
+git switch docs/lab13-kafka-k6-batch
 
 # Пример для одной ячейки матрицы: CPU 1.0, concurrency 2 у контейнеров app после пересборки
 export APP_CPUS=1.0 ADDITIONAL_CPUS=1.0
