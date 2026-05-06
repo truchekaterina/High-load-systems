@@ -237,7 +237,11 @@ k6 run --summary-export reports-lab13/summary_CPU05_conc1.json load-lab13-kafka-
 | 3 | `APP_CPUS=1.0` `ADDITIONAL_CPUS=1.0` `KAFKA_LISTENER_CONCURRENCY=1` | `summary_CPU10_conc1.json` |
 | 4 | `APP_CPUS=1.0` `ADDITIONAL_CPUS=1.0` `KAFKA_LISTENER_CONCURRENCY=2` | `summary_CPU10_conc2.json` |
 
-Графики стройте из этих JSON (например **`plot_lab8_reports.py`**, см. §2.6).
+Для графиков в форме LAB8 (**три панели** POST прокси / GET stats по смесям **STATS_SHARE** и парой CPU на каждый `@KafkaListener` concurrency) в репозитории есть **`k6/run-lab13-kafka-proxy-matrix.sh`**: он для каждой ячейки матрицы дополнительно делает три прогона с теми же порциями **`STATS_SHARE`**, что в LAB10/LAB8 (`0.05` / `0.5` / `0.95` → суффиксы файлов **`_mix05`**, **`_mix50`**, **`_mix95`**). Итоговые summary имеют вид **`summary_CPU05_conc1_mix50.json`** и т.д.; картинка **`reports-lab13/lab13_latency_vs_cpu.png`** (и **`…_conc1.png`**, **`…_conc2.png`**) строится **`plot_lab13_reports.py`**. Переменная **`LAB13_PANEL_CONC`** задаёт, какая панель дублируется в **`lab13_latency_vs_cpu.png`** (по умолчанию **`2`**).
+
+Графики только по **четырём** базовым прогонам без смесей (минимум ТЗ) — по-прежнему можно сохранять имена **`summary_CPU*_conc*.json`** без суффикса **`_mix*`** и строить обобщённые метрики по желанию; смесь нужна именно для **одной общей фигуры в стиле `lab8_latency_vs_cpu.png`**.
+
+Графики стройте из этих JSON (например **`plot_lab8_reports.py`** для сценариев S2S LAB8–10; для LAB13 с смесью POST/GET — **`plot_lab13_reports.py`**, см. абзац выше и §2.6).
 
 ### 0.9. Схема для отчёта
 

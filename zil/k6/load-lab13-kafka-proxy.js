@@ -4,12 +4,18 @@
  * Обязательно:
  *   PROXY_URL=http://127.0.0.1:18080/publish k6 run load-lab13-kafka-proxy.js
  *
- * Опционально (как LAB8):
- *   TARGET_VUS DURATION BASE_URL STATS_SHARE — лёгкий GET к additional /stats
+ * Опционально:
+ *   BASE_URL, STATS_SHARE (доля GET /additional/stats vs POST прокси; как LAB8: 0.05 / 0.5 / 0.95 для матрицы mix05/mix50/mix95).
+ * Метрики Trend post_ms / get_ms — для графиков как LAB8 (lab13_latency_vs_cpu*.png).
  */
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { Trend } from 'k6/metrics';
+
+/** Имена как в load-lab8-s2s.js — общий формат summary для plot_lab13_reports.py (LAB8-стиль панелей). */
+const timeProxyPost = new Trend('post_ms');
+const timeStatsGet = new Trend('get_ms');
 
 const proxyUrl = (__ENV.PROXY_URL || '').trim();
 if (!proxyUrl) {
@@ -49,12 +55,14 @@ function buildUserPostBody() {
 export default function () {
   if (Math.random() < statsShare) {
     const res = http.get(`${baseUrl}/additional/stats`);
+    timeStatsGet.add(res.timings.duration);
     check(res, { 'stats 200': (r) => r.status === 200 });
   } else {
     const body = buildUserPostBody();
     const res = http.post(proxyUrl, body, {
       headers: { 'Content-Type': 'application/json' },
     });
+    timeProxyPost.add(res.timings.duration);
     check(res, {
       'publish 200': (r) => r.status === 200,
     });

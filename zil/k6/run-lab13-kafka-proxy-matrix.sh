@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# LAB13: матрица CPU 0.5|1.0 (app + additional) × KAFKA_LISTENER_CONCURRENCY 1|2.
+# LAB13: матрица CPU × KAFKA_LISTENER_CONCURRENCY × три смеси STATS_SHARE (как LAB8 mix05/50/95).
+# = 12 прогонов k6; summary вида summary_CPU05_conc1_mix50.json — см. plot_lab13_reports.py (lab13_latency_vs_cpu*.png).
 # По SSH пересоздаём контейнеры на ВМ приложений (типично **2307**), локально запускаем **k6** → прокси → Kafka.
 #
 # Прокси (**uvicorn** на этом же узле что и k6) должен быть уже запущен с нужными KAFKA_*.
@@ -45,6 +46,7 @@ WARMUP_SEC="${WARMUP_SEC:-45}"
 SKIP_PLOT="${SKIP_PLOT:-0}"
 SKIP_PROXY_CHECK="${SKIP_PROXY_CHECK:-0}"
 APP_CHECK_URL="${APP_CHECK_URL:-http://127.0.0.1:8083/stats}"
+LAB13_PANEL_CONC="${LAB13_PANEL_CONC:-2}"
 
 export TARGET_VUS
 export DURATION
@@ -136,37 +138,41 @@ set_cpu_conc_and_up() {
   curl -sS -o /dev/null -w "%{http_code}\n" "${BASE_URL}/additional/stats" || true
 }
 
-run_k6_export_logs() {
+run_k6_mix_export_logs() {
   local cpu_tag="$1"
   local conc="$2"
-  local json_path="$OUT_DIR/summary_CPU${cpu_tag}_conc${conc}.json"
-  local log_path="$LOG_DIR/run_CPU${cpu_tag}_conc${conc}_app_additional.log"
+  local mix_tag="$3"
+  local stats_share="$4"
+  local json_path="$OUT_DIR/summary_CPU${cpu_tag}_conc${conc}_mix${mix_tag}.json"
+  local log_path="$LOG_DIR/run_CPU${cpu_tag}_conc${conc}_mix${mix_tag}_app_additional.log"
 
   check_proxy
-  echo ">>> k6 summary -> ${json_path##*/}"
+  export STATS_SHARE="$stats_share"
+  echo ">>> k6 STATS_SHARE=${stats_share} mix=${mix_tag} summary -> ${json_path##*/}"
   k6 run --summary-export "$json_path" "$SCRIPT_DIR/load-lab13-kafka-proxy.js"
 
   echo ">>> docker logs -> ${log_path##*/}"
   compose logs --no-color app additional >"$log_path" || true
 }
 
-# Порядок как в LAB13_MANUAL_FULL_RU.md §0.8: сначала стенд 2307, затем k6 на этой ВМ.
-set_cpu_conc_and_up "0.5" 1
-run_k6_export_logs "05" 1
-
-set_cpu_conc_and_up "0.5" 2
-run_k6_export_logs "05" 2
-
-set_cpu_conc_and_up "1.0" 1
-run_k6_export_logs "10" 1
-
-set_cpu_conc_and_up "1.0" 2
-run_k6_export_logs "10" 2
+# Матрица CPU × concurrency + три смеси POST/GET_stats как LAB8 (mix05/50/95 ↔ STATS_SHARE).
+for conc in 1 2; do
+  for cpus_pair in "0.5:05" "1.0:10"; do
+    cpus="${cpus_pair%%:*}"
+    cpu_tag="${cpus_pair##*:}"
+    set_cpu_conc_and_up "$cpus" "$conc"
+    for mix_pair in "05:0.05" "50:0.5" "95:0.95"; do
+      mix_tag="${mix_pair%%:*}"
+      share="${mix_pair##*:}"
+      run_k6_mix_export_logs "$cpu_tag" "$conc" "$mix_tag" "$share"
+    done
+  done
+done
 
 if [[ "$SKIP_PLOT" != 1 ]]; then
-  echo ">>> plot_lab13_reports.py $OUT_DIR"
+  echo ">>> plot_lab13_reports.py $OUT_DIR (LAB13_PANEL_CONC=${LAB13_PANEL_CONC})"
   if command -v python3 >/dev/null 2>&1; then
-    python3 "$SCRIPT_DIR/plot_lab13_reports.py" "$OUT_DIR" || {
+    LAB13_PANEL_CONC="$LAB13_PANEL_CONC" python3 "$SCRIPT_DIR/plot_lab13_reports.py" "$OUT_DIR" || {
       echo "Предупреждение: графики LAB13 не построены (matplotlib?). JSON в $OUT_DIR" >&2
     }
   else
