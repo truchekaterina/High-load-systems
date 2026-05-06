@@ -1,6 +1,6 @@
 # LAB13 — единое руководство: ТЗ, пошаговый план и реализация
 
-Документ — **единственный полный файл** по LAB13 для вашей выдачи (Трюх Екатерина, топик **`hl07`**, БД **`hl7`**): и **техзадание**, и **раздел §0 «куда подключиться и что набрать»**. Ветка документации **`LAB13_PLAN_RU.md`** содержит только ссылку сюда.
+Топик эксперимента LAB13: **`hl07-lab13`** (см. **`registry-tags-lab13-topic.env`**), **ровно 2 партиции** по ТЗ. **БД **`hl7`** в выдаче таблицы без изменений. Этот файл — **единый** гайд: **техзадание** и **§0 — куда подключиться и что набрать**. Ветка **`LAB13_PLAN_RU.md`** — редирект сюда.
 
 Документ задаёт **полное техническое задание и пошаговую реализацию** лабораторной LAB13 на базе стенда LAB12: нагрузочное тестирование с **переносом операций записи в Kafka**, переходом консьюмера на [**batch listener**](https://docs.spring.io/spring-kafka/reference/kafka/receiving-messages/listener-annotation.html#batch-listeners), сбором **графиков** для сочетаний **CPU 0.5 / 1.0** (одинаково для **`app`** и **`additional`**) и **`@KafkaListener(concurrency)` = 1 и 2** при **ровно двух партициях** топика.
 
@@ -34,7 +34,7 @@
 
 | Было в ранних лабах | Нужно в LAB13 |
 |---------------------|---------------|
-| k6 шлёт мутации **напрямую** в **app** / **8083** по REST | «Запись» нагрузки идёт в **Kafka** (топик **`hl07`**), **app** только **читает** топик |
+| k6 шлёт мутации **напрямую** в **app** / **8083** по REST | «Запись» нагрузки идёт в **Kafka** (топик LAB13 **`hl07-lab13`**, **2 партиции**), **app** только **читает** топик |
 | Сообщения по одному в listener | **Batch**-listener + измерения при **concurrency 1 и 2** |
 | Один уровень CPU | Матрица **CPU 0.5 и 1.0** (одинаково **app** + **additional**) × **concurrency 1 и 2** при **ровно 2 партициях** |
 
@@ -49,7 +49,7 @@
 | SSH **приложения / Docker (`zil`)** | `ssh -p 2307 hl@hlssh.zil.digital` |
 | SSH **нагрузка / k6** | `ssh -p 2311 hl@hlssh.zil.digital` |
 | SSH **Kafka-1** (CLI, как в LAB11) | `ssh -p 2314 hl@hlssh.zil.digital` (при необходимости **2315**) |
-| Топик Kafka | **`hl07`** |
+| Топик Kafka (выдача) | **`hl07`** (LAB11–LAB12); эксперимент LAB13 см. **`hl07-lab13`** |
 | Имя БД в задании | **`hl7`** |
 | Внутренний IP ВМ k6 | **`10.60.3.8`** |
 | Брокеры по IP, если DNS не работает | **`10.60.3.12:9094,10.60.3.13:9094`** (kafka-1 / kafka-2) |
@@ -86,7 +86,7 @@ git commit -m "docs(lab13): …"
 |---|-------------|----------------------------|
 | 1 | **Batch listener** в Spring Kafka | §2.3, §4.1 |
 | 2 | **Concurrency** через env **`KAFKA_LISTENER_CONCURRENCY`** (**1** или **2**) | §4.2, §5 |
-| 3 | Каталог **`zil/lab13-kafka-proxy/`**: **POST `/publish`** → **Kafka Producer** в **`hl07`** | §2.2, §2.2.7, §4.4 |
+| 3 | Каталог **`zil/lab13-kafka-proxy/`**: **POST `/publish`** → **Kafka Producer** в **`hl07-lab13`** (как **`app`**) | §2.2, §2.2.7, §4.4 |
 | 4 | Файл **`zil/k6/load-lab13-kafka-proxy.js`** и переменная окружения **`PROXY_URL`** | §2.2.5, §4.5 |
 
 #### 0.3.1. Простыми словами (это не «шифры», а конкретные задачи в репозитории)
@@ -95,7 +95,7 @@ git commit -m "docs(lab13): …"
 
 **Пункт 2 — `KAFKA_LISTENER_CONCURRENCY`.** Это **имя переменной окружения** в Docker (не пароль). Оно должно попадать в **`app`** и в код превращаться в **`app.kafka.listener.concurrency`**. Значение **1** или **2** вы задаёте **на ВМ 2307** перед `docker compose up` (как в **0.4**), чтобы для отчёта прогнать **две** конфигурации параллельности при **двух партициях** топика. Где прописать переменную в compose — §4.2.
 
-**Пункт 3 — каталог `lab13-kafka-proxy`.** Отдельная маленькая программа **не внутри Spring-приложения**: она крутится на **ВМ 2311**, слушает **HTTP** (например `http://127.0.0.1:18080/publish`), принимает **JSON** как в LAB12 и **сама** является **Kafka Producer** (публикует в топик **`hl07`**). В репозитории — папка с кодом, `requirements.txt` или Dockerfile, **`README`** «как запустить». Детали контракта **POST** и пример Compose — §2.2 и §2.2.7.
+**Пункт 3 — каталог `lab13-kafka-proxy`.** Отдельная маленькая программа **не внутри Spring-приложения**: она крутится на **ВМ 2311**, слушает **HTTP** (например `http://127.0.0.1:18080/publish`), принимает **JSON** как в LAB12 и **сама** является **Kafka Producer** (публикует в тот же топик, что и **`app`** в LAB13 — обычно **`hl07-lab13`**). В репозитории — папка с кодом, `requirements.txt` или Dockerfile, **`README`** «как запустить». Детали контракта **POST** и пример Compose — §2.2 и §2.2.7.
 
 **Пункт 4 — `load-lab13-kafka-proxy.js` и `PROXY_URL`.**
 
@@ -137,13 +137,15 @@ git commit -m "docs(lab13): …"
    export KAFKA_LISTENER_CONCURRENCY=1
    ```
 
-5. Поднять контейнеры (**env-файл** тот, что вы используете для **hl7** в курсе — имя может отличаться):
+5. Поднимите контейнеры. **LAB13 (ровно 2 партиции по ТЗ):** подключите второй файл **`registry-tags-lab13-topic.env`** — топик эксперимента **`hl07-lab13`**. Первый файл — ваш обычный registry с JDBC (часто **`registry-tags-lab8-hl7.env`**).
 
    ```bash
-   docker compose --env-file registry-tags-lab8-hl7.env up -d --force-recreate app additional
+   docker compose --env-file registry-tags-lab8-hl7.env --env-file registry-tags-lab13-topic.env up -d --force-recreate app additional
    ```
 
-   Проверьте, что в конфиге приложения топик **`hl07`** и БД **`hl7`** совпадают с выдачей (как в LAB12).
+   **Только LAB12** (без второго файла) остаётся прежняя команда с одним **`--env-file`** и топиком из таблицы (**`hl07`**).
+
+   Убедитесь, что топик **`hl07-lab13`** создан на кластере с **2 партициями** (см. §0.5); БД **`hl7`** без изменений.
 
 6. Прогрев и быстрый health:
 
@@ -153,23 +155,27 @@ git commit -m "docs(lab13): …"
    curl -sS -o /dev/null -w "additional %{http_code}\n" http://127.0.0.1:8084/additional/stats
    ```
 
-### 0.5. У топика **hl07** должно быть **2 партиции**
+### 0.5. Топик LAB13: **ровно 2 партиции** (**`hl07-lab13`**)
+
+Частый случай курса: учебный **`hl07`** в Kafka UI уже имеет **3 партиции** → **уменьшить их нельзя**. Для LAB13 используйте **отдельный топик **`hl07-lab13`** с **`PartitionCount: 2`**. В репозитории:
+
+- **`zil/registry-tags-lab13-topic.env`** — задаёт **`KAFKA_TOPIC=hl07-lab13`** для второго **`--env-file`** к **`docker compose`**.
+- **`zil/scripts/kafka_lab13_create_topic_2_partitions.sh`** — создаёт топик на кластере (запуск на узле с **`kafka-topics.sh`**, обычно SSH **2314**).
+
+На узле Kafka (пример):
 
 ```bash
 ssh -p 2314 hl@hlssh.zil.digital
-cd ~/kafka_2.13-*   # как у вас в LAB11; имя каталога может отличаться
-bin/kafka-topics.sh --describe --topic hl07 --bootstrap-server hl15.zil:9094
+cd ~/kafka_2.13-*   # как у вас в LAB11
+export KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-hl15.zil:9094}"
+# если скрипт лежит в клоне:
+bash ~/katya/Labs_hls/zil/scripts/kafka_lab13_create_topic_2_partitions.sh
+bin/kafka-topics.sh --describe --topic hl07-lab13 --bootstrap-server "$KAFKA_BOOTSTRAP_SERVERS"
 ```
 
-Если с этого узла **`hl15.zil`** не отвечает, замените bootstrap на **`10.60.3.12:9094`** (или по указанию преподавателя).
+Ожидается **`PartitionCount: 2`**. Проверка в **Kafka UI**: открыть топик **`hl07-lab13`** — **Partitions: 2**.
 
-Увеличить до **2** партиций (если было **1**):
-
-```bash
-bin/kafka-topics.sh --alter --topic hl07 --partitions 2 --bootstrap-server hl15.zil:9094
-```
-
-Если партиций уже **больше двух** — стандартно **уменьшить нельзя**; варианты в §2.4.
+Если **`hl07`** имел **1** партицию, можно **`--alter --partitions 2`** именно для **`hl07`**; при **>2** партициях для строгого ТЗ остаётся **отдельное имя топика** (как **`hl07-lab13`**).
 
 ### 0.6. ВМ нагрузки (**2311**): окружение и запуск прокси
 
@@ -184,7 +190,7 @@ export KAFKA_BOOTSTRAP_SERVERS="hl15.zil:9094,hl14.zil:9094"
 # при необходимости:
 # export KAFKA_BOOTSTRAP_SERVERS="10.60.3.12:9094,10.60.3.13:9094"
 
-export KAFKA_TOPIC=hl07
+export KAFKA_TOPIC=hl07-lab13
 export PROXY_URL="http://127.0.0.1:18080/publish"
 ```
 
@@ -249,7 +255,7 @@ k6 run --summary-export reports-lab13/summary_CPU05_conc1.json load-lab13-kafka-
 flowchart LR
   k6[K6 http.post]
   proxy[REST прокси 2311]
-  kafka[Kafka hl07 2 partitions]
+  kafka[Kafka hl07-lab13 2 partitions]
   app[zil-app batch]
   db[(PostgreSQL hl7)]
 
@@ -339,7 +345,7 @@ services:
     network_mode: "host"
     environment:
       KAFKA_BOOTSTRAP_SERVERS: "hl15.zil:9094,hl14.zil:9094"
-      KAFKA_TOPIC: "hl07"
+      KAFKA_TOPIC: "hl07-lab13"
       PROXY_BIND: "127.0.0.1:18080"
 ```
 
@@ -442,7 +448,7 @@ curl -sS -X POST http://127.0.0.1:18080/publish \
 - **`concurrency = 1`**
 - **`concurrency = 2`**
 
-И при этом топик (**`hl07`**) должен иметь **`PartitionCount = 2`**.
+И при этом топик эксперимента LAB13 (**`hl07-lab13`**, задаётся **`registry-tags-lab13-topic.env`**) должен иметь **`PartitionCount = 2`**. Если учебный **`hl07`** из таблицы уже имеет **>2** партиций, **уменьшить** их нельзя — используйте отдельное имя топика (§0.5).
 
 Смысл ограничения:
 
@@ -453,14 +459,14 @@ curl -sS -X POST http://127.0.0.1:18080/publish \
 Команды на узле Kafka (или в контейнере CLI из LAB11), после перехода в каталог установки **`kafka_2.13-...`**:
 
 ```bash
-# Текущее состояние
-bin/kafka-topics.sh --describe --topic hl07 --bootstrap-server hl15.zil:9094
+# Топик LAB13 с нуля — скрипт в репозитории:
+bash ~/path/to/Labs_hls/zil/scripts/kafka_lab13_create_topic_2_partitions.sh
 
-# Привести к 2 партициям (если было меньше — increase; если было больше — уменьшить нельзя стандартным alter)
-bin/kafka-topics.sh --alter --topic hl07 --partitions 2 --bootstrap-server hl15.zil:9094
+# Проверка
+bin/kafka-topics.sh --describe --topic hl07-lab13 --bootstrap-server hl15.zil:9094
 ```
 
-Если топик уже имел **>2** партиций и методичка курса **требует ровно 2**, возможны варианты: отдельный топик только для LAB13 (например `hl07-lab13-bench`) или согласование с преподавателем — **зафиксируйте в отчёте**, что именно вы сделали.
+Если **`hl07`** из выдачи имел только **1** партицию, можно **`--alter --topic hl07 --partitions 2`** (увеличение). Если уже **≥3**, для ТЗ нужен **`hl07-lab13`** (или другое имя по согласованию) — **зафиксируйте в отчёте**.
 
 ### 2.5. Лимиты CPU **`app`** и **`additional`**
 
@@ -478,8 +484,7 @@ bin/kafka-topics.sh --alter --topic hl07 --partitions 2 --bootstrap-server hl15.
 ```bash
 cd ~/work/Labs_hls/zil
 export APP_CPUS=0.5 ADDITIONAL_CPUS=0.5
-# + образы и env Kafka см. ниже
-docker compose --env-file registry-tags-lab8-hl7.env up -d --force-recreate app additional
+docker compose --env-file registry-tags-lab8-hl7.env --env-file registry-tags-lab13-topic.env up -d --force-recreate app additional
 ```
 
 Повтор с **`export APP_CPUS=1.0 ADDITIONAL_CPUS=1.0`** для второй серии графиков.
@@ -502,7 +507,7 @@ docker compose --env-file registry-tags-lab8-hl7.env up -d --force-recreate app 
 
 Для каждого сценария:
 
-1. Зафиксировать **`PartitionCount = 2`** для **`hl07`** (вывод **`kafka-topics --describe`**).
+1. Зафиксировать **`PartitionCount = 2`** для топика эксперимента (**`hl07-lab13`**, вывод **`kafka-topics --describe`** или Kafka UI).
 2. Прогреть стенд (после **`up`** выдержите **>= 30–60 с** перед k6 так же, как в прошлых лабораторных).
 3. Запустить **k6** со сценарием **`load-lab13-kafka-proxy.js`** (или вашим именем): **`http.post`** на **`PROXY_URL`**, запись в Kafka выполняет прокси (см. §2.2).
 4. Сохранить **summary JSON** k6 (`--summary-export` или аналог).
@@ -572,7 +577,7 @@ export APP_CPUS=1.0 ADDITIONAL_CPUS=1.0
 export ZIL_APP_IMAGE=rental/zil-app:lab13-local   # ваш тег после сборки
 export KAFKA_LISTENER_CONCURRENCY=2               # синхронно с топиком: 2 партиции
 
-docker compose --env-file registry-tags-lab8-hl7.env up -d --force-recreate app additional
+docker compose --env-file registry-tags-lab8-hl7.env --env-file registry-tags-lab13-topic.env up -d --force-recreate app additional
 sleep 45
 curl -sS -o /dev/null -w "app %{http_code}\n" http://127.0.0.1:8083/stats
 curl -sS -o /dev/null -w "additional %{http_code}\n" http://127.0.0.1:8084/additional/stats
@@ -594,7 +599,7 @@ k6 run --summary-export reports-lab13/summary_cpuXXX_concYYY.json load-lab13-kaf
 | Артефакт | Содержание |
 |----------|------------|
 | Ветка / PR | Изменения: **batch listener**, **`load-lab13-kafka-proxy.js`**, каталог **`lab13-kafka-proxy/`** (или эквивалент) с **README** |
-| `kafka-topics --describe --topic hl07` | **`PartitionCount: 2`**, реплики |
+| `kafka-topics --describe --topic hl07-lab13` | **`PartitionCount: 2`**, реплики |
 | Вывод конфигурации прогона | CPU 0.5/1.0 для **обоих** контейнеров |
 | **`KAFKA_LISTENER_CONCURRENCY`** или эквивалент | **`1`** и **`2`** в разных запусках |
 | JSON summaries k6 | Четыре (или более с повторами) прогона |

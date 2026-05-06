@@ -29,9 +29,12 @@ fi
 
 ZIL_ROOT="${ZIL_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 ENV_FILE="${ENV_FILE:-$ZIL_ROOT/registry-tags-lab8-hl7.env}"
+# LAB13 ТЗ: топик с 2 партициями — см. registry-tags-lab13-topic.env (hl07-lab13)
+LAB13_TOPIC_ENV="${LAB13_TOPIC_ENV:-$ZIL_ROOT/registry-tags-lab13-topic.env}"
 DOCKER_SSH="${DOCKER_SSH:-${HL07_SSH:-}}"
 REMOTE_ZIL="${REMOTE_ZIL:-/home/hl/work/Labs_hls/zil}"
 REMOTE_ENV_FILE="${REMOTE_ENV_FILE:-registry-tags-lab8-hl7.env}"
+REMOTE_ENV_TOPIC_FILE="${REMOTE_ENV_TOPIC_FILE:-registry-tags-lab13-topic.env}"
 
 PROXY_URL="${PROXY_URL:-http://127.0.0.1:18080/publish}"
 export PROXY_URL
@@ -88,6 +91,10 @@ if [[ -z "${DOCKER_SSH}" ]]; then
     echo "Нет файла env: $ENV_FILE" >&2
     exit 1
   fi
+  if [[ ! -f "${LAB13_TOPIC_ENV}" ]]; then
+    echo "LAB13: нет файла ${LAB13_TOPIC_ENV} — добавьте registry-tags-lab13-topic.env (топик 2 партиции)." >&2
+    exit 1
+  fi
 else
   require ssh
 fi
@@ -99,9 +106,9 @@ compose() {
     local remote_cmd
     remote_cmd=$(printf '%q ' "$@")
     ssh "$DOCKER_SSH" \
-      "export APP_CPUS=$(printf '%q' "${APP_CPUS:-}") ADDITIONAL_CPUS=$(printf '%q' "${ADDITIONAL_CPUS:-}") KAFKA_LISTENER_CONCURRENCY=$(printf '%q' "${KAFKA_LISTENER_CONCURRENCY:-}"); cd $(printf '%q' "$REMOTE_ZIL") && docker compose --env-file $(printf '%q' "$REMOTE_ENV_FILE") $remote_cmd"
+      "export APP_CPUS=$(printf '%q' "${APP_CPUS:-}") ADDITIONAL_CPUS=$(printf '%q' "${ADDITIONAL_CPUS:-}") KAFKA_LISTENER_CONCURRENCY=$(printf '%q' "${KAFKA_LISTENER_CONCURRENCY:-}"); cd $(printf '%q' "$REMOTE_ZIL") && docker compose --env-file $(printf '%q' "$REMOTE_ENV_FILE") --env-file $(printf '%q' "$REMOTE_ENV_TOPIC_FILE") $remote_cmd"
   else
-    docker compose --project-directory "$ZIL_ROOT" --env-file "$ENV_FILE" "$@"
+    docker compose --project-directory "$ZIL_ROOT" --env-file "$ENV_FILE" --env-file "${LAB13_TOPIC_ENV}" "$@"
   fi
 }
 

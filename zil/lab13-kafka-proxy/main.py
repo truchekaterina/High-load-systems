@@ -3,7 +3,7 @@ LAB13: REST POST /publish → Kafka Producer (topic from env).
 
 Запуск (ВМ нагрузки 2311, рядом с k6):
   export KAFKA_BOOTSTRAP_SERVERS=...
-  export KAFKA_TOPIC=hl07
+  export KAFKA_TOPIC=hl07-lab13
   uvicorn main:app --host 127.0.0.1 --port 18080
 """
 
@@ -37,7 +37,7 @@ def _bootstrap_servers() -> list[str]:
 
 
 def _topic() -> str:
-    return (os.environ.get("KAFKA_TOPIC") or "hl07").strip() or "hl07"
+    return (os.environ.get("KAFKA_TOPIC") or "hl07-lab13").strip() or "hl07-lab13"
 
 
 def _send_timeout_sec() -> float:

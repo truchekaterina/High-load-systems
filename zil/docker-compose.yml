@@ -45,8 +45,9 @@ services:
       # LAB12: при деплое через compose укажите реальные bootstrap с ВМ (или тот же туннель к брокерам)
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-hl15.zil:9094,hl14.zil:9094}
       SPRING_KAFKA_CONSUMER_GROUP_ID: ${SPRING_KAFKA_CONSUMER_GROUP_ID:-rental-app-lab12-hl07}
+      # LAB12 по умолчанию hl07; LAB13 (ровно 2 партиции): второй env-файл registry-tags-lab13-topic.env → hl07-lab13
       KAFKA_TOPIC: ${KAFKA_TOPIC:-hl07}
-      # LAB13: для матрицы 1×2 задаётте 1 или 2 (≤ числа партиций топика).
+      # LAB13: для матрицы 1×2 задайте 1 или 2 (≤ числа партиций топика; для hl07-lab13 — 2 партиции).
       KAFKA_LISTENER_CONCURRENCY: ${KAFKA_LISTENER_CONCURRENCY:-2}
     # LAB12: брокеры в metadata отдают hl14/hl15; внутри контейнера нужен статический резолв.
     # IP из общей таблицы курса (kafka-1 / kafka-2, LAB11): при расхождении подставь свои адреса.
