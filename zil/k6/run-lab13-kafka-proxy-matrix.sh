@@ -10,7 +10,8 @@
 #   2) ./lab13-k6-matrix.sh
 #
 # Или только переменные окружения (см. lab13-stand.env.example):
-#   DOCKER_SSH / HL07_SSH, REMOTE_ZIL, REMOTE_ENV_FILE, PROXY_URL, BASE_URL, APP_CHECK_URL ...
+#   DOCKER_SSH / HL07_SSH, REMOTE_ZIL, REMOTE_ENV_FILE, REMOTE_ENV_TOPIC_FILE (часто registry-tags-lab13-topic.env),
+#   PROXY_URL, BASE_URL, APP_CHECK_URL ...
 #
 set -euo pipefail
 
