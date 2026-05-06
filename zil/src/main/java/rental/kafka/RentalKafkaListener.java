@@ -8,6 +8,8 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import rental.kafka.dto.KafkaInboundCommand;
 
+import java.util.List;
+
 @Component
 public class RentalKafkaListener {
 
@@ -22,14 +24,26 @@ public class RentalKafkaListener {
     }
 
     /**
-     * {@code concurrency} — число потоков; не превышайте число партиций топика (см. LAB12).
+     * {@code concurrency} — число потоков; не превышайте число партиций топика (см. LAB12/LAB13).
+     * LAB13: batch listener — партия строк JSON из одного poll; ошибка в одном сообщении не отменяет
+     * остальные (логируем и идём дальше — политика зафиксирована для отчёта).
      */
     @KafkaListener(
             topics = "${app.kafka.topic}",
             groupId = "${spring.kafka.consumer.group-id}",
             containerFactory = "kafkaListenerContainerFactory",
             concurrency = "${app.kafka.listener.concurrency}")
-    public void consume(String message) {
+    public void consume(List<String> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return;
+        }
+        log.trace("Kafka batch size={}", messages.size());
+        for (String message : messages) {
+            processOne(message);
+        }
+    }
+
+    private void processOne(String message) {
         try {
             KafkaInboundCommand command = objectMapper.readValue(message, KafkaInboundCommand.class);
             commandRouter.dispatch(command.entity(), command.operation(), command.payload());

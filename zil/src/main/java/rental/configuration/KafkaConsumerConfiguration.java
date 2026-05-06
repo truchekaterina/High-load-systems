@@ -40,6 +40,8 @@ public class KafkaConsumerConfiguration {
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(kafkaConsumerFactory);
         factory.setConcurrency(concurrency);
+        // LAB13: пакетный приём сообщений (batch listener)
+        factory.setBatchListener(true);
         return factory;
     }
 }

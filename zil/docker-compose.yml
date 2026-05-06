@@ -46,7 +46,8 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-hl15.zil:9094,hl14.zil:9094}
       SPRING_KAFKA_CONSUMER_GROUP_ID: ${SPRING_KAFKA_CONSUMER_GROUP_ID:-rental-app-lab12-hl07}
       KAFKA_TOPIC: ${KAFKA_TOPIC:-hl07}
-      KAFKA_LISTENER_CONCURRENCY: ${KAFKA_LISTENER_CONCURRENCY:-3}
+      # LAB13: для матрицы 1×2 задаётте 1 или 2 (≤ числа партиций топика).
+      KAFKA_LISTENER_CONCURRENCY: ${KAFKA_LISTENER_CONCURRENCY:-2}
     # LAB12: брокеры в metadata отдают hl14/hl15; внутри контейнера нужен статический резолв.
     # IP из общей таблицы курса (kafka-1 / kafka-2, LAB11): при расхождении подставь свои адреса.
     extra_hosts:
