@@ -25,6 +25,9 @@
 
 services:
   app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: ${ZIL_APP_IMAGE:-docker.io/rinakt/zil-app:lab9}
     container_name: zil-app
     environment:
