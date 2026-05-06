@@ -1,23 +1,20 @@
 #!/usr/bin/env bash
 # LAB13: матрица измерений CPU × KAFKA_LISTENER_CONCURRENCY на **2307** + **k6** на **2311**.
 #
-# По умолчанию (**LAB13_MIX_PANELS=0**) — как §0.8 ТЗ: **4 прогона** k6, имена summary_CPU05_conc1.json …
+# Запуск на ВМ k6 (рядом с прокси uvicorn):
+#   • Только ТЗ §0.8 (4 прогона): ./lab13-k6-matrix.sh
+#   • Графики LAB8-стиля (12 прогонов): ./lab13-k6-matrix-graphs.sh
+# Файл lab13-stand.env — один раз из lab13-stand.env.example (SSH, IP, топик).
 #
-# При **LAB13_MIX_PANELS=1** — дополнительно три смеси POST/GET_stats (как LAB8): **12 прогонов**,
-# summary_CPU05_conc1_mix50.json … → графики lab13_latency_vs_cpu*.png (plot_lab13_reports.py).
+# Три смеси STATS_SHARE на ячейку и файлы *_mix*.json включаются скриптом ./lab13-k6-matrix-graphs.sh
+# (или LAB13_MIX_PANELS=1 вручную при вызове run-lab13-kafka-proxy-matrix.sh).
 #
 # На **2307** compose вызывается с **двумя** env-файлами (registry + **registry-tags-lab13-topic.env** → топик **hl07-lab13**).
 # Две партиции топика скрипт **не создаёт** — см. zil/scripts/kafka_lab13_create_topic_2_partitions.sh и §0.5 мануала.
 #
 # Прокси (**uvicorn**) должен быть уже запущен с **тем же KAFKA_TOPIC**, что и app (обычно **hl07-lab13** из lab13-stand.env).
 #
-# Способ как в LAB10:
-#   1) На ВМ с k6: скопируйте lab13-stand.env.example → lab13-stand.env, подставьте SSH/пути/BASE_URL.
-#   2) ./lab13-k6-matrix.sh
-#
-# Или только переменные окружения (см. lab13-stand.env.example):
-#   DOCKER_SSH / HL07_SSH, REMOTE_ZIL, REMOTE_ENV_FILE, REMOTE_ENV_TOPIC_FILE (часто registry-tags-lab13-topic.env),
-#   PROXY_URL, BASE_URL, APP_CHECK_URL ...
+# Или напрямую этот скрипт с экспортом переменных (без lab13-stand.env — см. пример в репозитории).
 #
 set -euo pipefail
 
@@ -33,6 +30,16 @@ if [[ "${LAB13_USE_STAND_ENV:-}" == 1 ]]; then
   source "$SCRIPT_DIR/lab13-stand.env"
   set +a
 fi
+
+# Имя запущенной обёртки перебивает LAB13_MIX_PANELS из lab13-stand.env (предсказуемый режим).
+case "${LAB13_MATRIX_UI:-}" in
+  tz)
+    LAB13_MIX_PANELS=0
+    ;;
+  graphs)
+    LAB13_MIX_PANELS=1
+    ;;
+esac
 
 ZIL_ROOT="${ZIL_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 ENV_FILE="${ENV_FILE:-$ZIL_ROOT/registry-tags-lab8-hl7.env}"
@@ -109,6 +116,18 @@ else
 fi
 
 mkdir -p "$OUT_DIR" "$LOG_DIR"
+
+echo ""
+echo "═══════════════════════════════════════════════════════════════════"
+if [[ "${LAB13_MIX_PANELS}" == "1" ]]; then
+  echo "  LAB13 — режим: ГРАФИКИ LAB8 (12 прогонов k6, файлы *_mix*.json)"
+else
+  echo "  LAB13 — режим: ТЗ §0.8 (4 прогона k6)"
+fi
+echo "  Папка отчётов: ${OUT_DIR}"
+echo "  Топик Kafka (прокси uvicorn должен совпадать): ${KAFKA_TOPIC:-hl07-lab13}"
+echo "═══════════════════════════════════════════════════════════════════"
+echo ""
 
 if [[ -n "${KAFKA_TOPIC:-}" ]]; then
   echo ">>> LAB13: ожидается прокси с KAFKA_TOPIC=${KAFKA_TOPIC} (в другом терминале: export и uvicorn)."
