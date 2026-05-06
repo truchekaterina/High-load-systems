@@ -5,6 +5,7 @@
 # hl15.zil:9094, hl14.zil:9094 (как у Spring).
 # С ноутбука при туннеле LAB11 (§8.2): задайте KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:19094,127.0.0.1:19095
 # или KAFKA_PUBLISH_USE_TUNNEL=1.
+# POST (тело): KAFKA_POST_FULL_NAME, KAFKA_POST_DRIVER_LICENSE, KAFKA_POST_PHONE (иначе значения из примера).
 # DEL: KAFKA_OPERATION=DEL и KAFKA_USER_ID=<uuid>; при необходимости KAFKA_DEL_PAYLOAD_AS_OBJECT=1.
 
 from __future__ import annotations
@@ -60,15 +61,12 @@ def _build_message() -> dict:
     if op != "POST":
         print(f"Unsupported KAFKA_OPERATION={op!r} (use POST or DEL)", file=sys.stderr)
         raise SystemExit(2)
-    return {
-        "entity": "USER",
-        "operation": "POST",
-        "payload": {
-            "fullName": "From Python LAB12",
-            "driverLicense": "PY1234567",
-            "phone": "+70000000099",
-        },
+    payload = {
+        "fullName": os.environ.get("KAFKA_POST_FULL_NAME", "From Python LAB12").strip(),
+        "driverLicense": os.environ.get("KAFKA_POST_DRIVER_LICENSE", "PY1234567").strip(),
+        "phone": os.environ.get("KAFKA_POST_PHONE", "+70000000099").strip(),
     }
+    return {"entity": "USER", "operation": "POST", "payload": payload}
 
 
 def main() -> None:
