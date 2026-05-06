@@ -47,5 +47,7 @@ zil/secrets/*
 *.log
 !zil/k6/reports-lab10-s2s/lab10-run-logs/
 !zil/k6/reports-lab10-s2s/lab10-run-logs/*.log
+!zil/k6/reports-lab13/old_sum/lab13-run-logs/
+!zil/k6/reports-lab13/old_sum/lab13-run-logs/*.log
 hs_err_pid*.log
 replay_pid*.log

@@ -1,4 +1,5 @@
 summary*.json
+!reports-lab13/old_sum/summaries/summary*.json
 reports/summary-vus-*.json
 reports/avg_vs_vus.png
 

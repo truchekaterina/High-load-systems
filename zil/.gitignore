@@ -24,6 +24,9 @@ hs_err_pid*.log
 # LAB10: docker compose логи в артефактах k6
 !k6/reports-lab10-s2s/lab10-run-logs/
 !k6/reports-lab10-s2s/lab10-run-logs/*.log
+# LAB13: архив под git в old_sum
+!k6/reports-lab13/old_sum/lab13-run-logs/
+!k6/reports-lab13/old_sum/lab13-run-logs/*.log
 
 # Package files
 *.jar
