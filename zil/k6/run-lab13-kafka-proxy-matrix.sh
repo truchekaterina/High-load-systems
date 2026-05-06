@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
-# LAB13: матрица CPU × KAFKA_LISTENER_CONCURRENCY × три смеси STATS_SHARE (как LAB8 mix05/50/95).
-# = 12 прогонов k6; summary вида summary_CPU05_conc1_mix50.json — см. plot_lab13_reports.py (lab13_latency_vs_cpu*.png).
-# По SSH пересоздаём контейнеры на ВМ приложений (типично **2307**), локально запускаем **k6** → прокси → Kafka.
+# LAB13: матрица измерений CPU × KAFKA_LISTENER_CONCURRENCY на **2307** + **k6** на **2311**.
 #
-# Прокси (**uvicorn** на этом же узле что и k6) должен быть уже запущен с нужными KAFKA_*.
+# По умолчанию (**LAB13_MIX_PANELS=0**) — как §0.8 ТЗ: **4 прогона** k6, имена summary_CPU05_conc1.json …
+#
+# При **LAB13_MIX_PANELS=1** — дополнительно три смеси POST/GET_stats (как LAB8): **12 прогонов**,
+# summary_CPU05_conc1_mix50.json … → графики lab13_latency_vs_cpu*.png (plot_lab13_reports.py).
+#
+# На **2307** compose вызывается с **двумя** env-файлами (registry + **registry-tags-lab13-topic.env** → топик **hl07-lab13**).
+# Две партиции топика скрипт **не создаёт** — см. zil/scripts/kafka_lab13_create_topic_2_partitions.sh и §0.5 мануала.
+#
+# Прокси (**uvicorn**) должен быть уже запущен с **тем же KAFKA_TOPIC**, что и app (обычно **hl07-lab13** из lab13-stand.env).
 #
 # Способ как в LAB10:
 #   1) На ВМ с k6: скопируйте lab13-stand.env.example → lab13-stand.env, подставьте SSH/пути/BASE_URL.
@@ -51,6 +57,8 @@ SKIP_PLOT="${SKIP_PLOT:-0}"
 SKIP_PROXY_CHECK="${SKIP_PROXY_CHECK:-0}"
 APP_CHECK_URL="${APP_CHECK_URL:-http://127.0.0.1:8083/stats}"
 LAB13_PANEL_CONC="${LAB13_PANEL_CONC:-2}"
+# 0 = только 4 ячейки ТЗ (§0.8); 1 = ещё три STATS_SHARE на ячейку (графики как LAB8).
+LAB13_MIX_PANELS="${LAB13_MIX_PANELS:-0}"
 
 export TARGET_VUS
 export DURATION
@@ -101,6 +109,10 @@ else
 fi
 
 mkdir -p "$OUT_DIR" "$LOG_DIR"
+
+if [[ -n "${KAFKA_TOPIC:-}" ]]; then
+  echo ">>> LAB13: ожидается прокси с KAFKA_TOPIC=${KAFKA_TOPIC} (в другом терминале: export и uvicorn)."
+fi
 
 compose() {
   if [[ -n "${DOCKER_SSH}" ]]; then
@@ -163,19 +175,47 @@ run_k6_mix_export_logs() {
   compose logs --no-color app additional >"$log_path" || true
 }
 
-# Матрица CPU × concurrency + три смеси POST/GET_stats как LAB8 (mix05/50/95 ↔ STATS_SHARE).
-for conc in 1 2; do
+run_k6_tz_export_logs() {
+  local cpu_tag="$1"
+  local conc="$2"
+  local json_path="$OUT_DIR/summary_CPU${cpu_tag}_conc${conc}.json"
+  local log_path="$LOG_DIR/run_CPU${cpu_tag}_conc${conc}_app_additional.log"
+
+  check_proxy
+  export STATS_SHARE=0
+  echo ">>> k6 (ТЗ §0.8, STATS_SHARE=0) summary -> ${json_path##*/}"
+  k6 run --summary-export "$json_path" "$SCRIPT_DIR/load-lab13-kafka-proxy.js"
+
+  echo ">>> docker logs -> ${log_path##*/}"
+  compose logs --no-color app additional >"$log_path" || true
+}
+
+# Порядок как LAB13_MANUAL §0.8: 0.5×conc1, 0.5×conc2, 1.0×conc1, 1.0×conc2.
+if [[ "${LAB13_MIX_PANELS}" == "1" ]]; then
+  echo ">>> LAB13_MIX_PANELS=1 — 12 прогонов k6 (mix05/50/95 на каждую ячейку CPU×conc)."
+  for conc in 1 2; do
+    for cpus_pair in "0.5:05" "1.0:10"; do
+      cpus="${cpus_pair%%:*}"
+      cpu_tag="${cpus_pair##*:}"
+      set_cpu_conc_and_up "$cpus" "$conc"
+      for mix_pair in "05:0.05" "50:0.5" "95:0.95"; do
+        mix_tag="${mix_pair%%:*}"
+        share="${mix_pair##*:}"
+        run_k6_mix_export_logs "$cpu_tag" "$conc" "$mix_tag" "$share"
+      done
+    done
+  done
+else
+  echo ">>> LAB13_MIX_PANELS=0 — 4 прогона k6 (минимум ТЗ §0.8)."
   for cpus_pair in "0.5:05" "1.0:10"; do
     cpus="${cpus_pair%%:*}"
     cpu_tag="${cpus_pair##*:}"
-    set_cpu_conc_and_up "$cpus" "$conc"
-    for mix_pair in "05:0.05" "50:0.5" "95:0.95"; do
-      mix_tag="${mix_pair%%:*}"
-      share="${mix_pair##*:}"
-      run_k6_mix_export_logs "$cpu_tag" "$conc" "$mix_tag" "$share"
+    for conc in 1 2; do
+      set_cpu_conc_and_up "$cpus" "$conc"
+      run_k6_tz_export_logs "$cpu_tag" "$conc"
     done
   done
-done
+fi
 
 if [[ "$SKIP_PLOT" != 1 ]]; then
   echo ">>> plot_lab13_reports.py $OUT_DIR (LAB13_PANEL_CONC=${LAB13_PANEL_CONC})"
