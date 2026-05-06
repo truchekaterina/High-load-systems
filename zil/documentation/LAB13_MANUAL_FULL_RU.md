@@ -85,7 +85,7 @@ ssh -p 2307 hl@hlssh.zil.digital
 cd ~/work/Labs_hls/zil
 git fetch origin && git switch docs/lab13-kafka-k6-batch && git pull --ff-only
 
-docker compose build app
+docker compose --env-file registry-tags-lab8-hl7.env --env-file registry-tags-lab13-topic.env build app
 export ZIL_APP_IMAGE=rental/zil-app:lab13-local
 ```
 
@@ -104,7 +104,28 @@ curl -sS -o /dev/null -w "additional %{http_code}\n" http://127.0.0.1:8084/addit
 
 Меняйте только **`APP_CPUS` / `ADDITIONAL_CPUS`** (**всегда одинаково** друг другу: **0.5** или **1.0**) и **`KAFKA_LISTENER_CONCURRENCY`** (**1** или **2**); команду **`docker compose … up`** повторяйте. Детали четырёх прогонов — таблица в §0.8.
 
-Проверка, что сообщения доходят: **`docker compose logs -f app`** (ожидаем обработку Kafka-команд после **curl**/k6 с **2311**).
+Проверка топика (**на 2307**, из **`zil`**; для БД **`hl7`** файл **`registry-tags-lab8-hl7.env`** уже задаёт JDBC/схему):
+
+1. Убедиться, что контейнер получил **`KAFKA_TOPIC=hl07-lab13`** (то же имя контейнера можно подставить из `docker compose … ps`):
+
+   ```bash
+   docker inspect zil-app --format '{{range .Config.Env}}{{println .}}{{end}}' | grep '^KAFKA_TOPIC='
+   ```
+
+   Ожидается строка **`KAFKA_TOPIC=hl07-lab13`**.
+
+2. В логах старта должна быть подписка консьюмера на топик (**после успешного `up`** подождите **≈30–60 с**, затем):
+
+   ```bash
+   docker compose \
+     --env-file registry-tags-lab8-hl7.env \
+     --env-file registry-tags-lab13-topic.env \
+     logs app --tail 200 | grep -i hl07-lab13
+   ```
+
+   Типичная строка Spring Kafka: **`Subscribed to topic(s): hl07-lab13`**.
+
+После **curl**/k6 с **2311** имеет смысл **`docker compose … logs app --tail 80`** (без фильтра) или **`logs -f app`** и искать **`Kafka command`** по проекту LAB12.
 
 ---
 
@@ -256,12 +277,14 @@ git commit -m "docs(lab13): …"
    git switch docs/lab13-kafka-k6-batch
    ```
 
-3. После изменений Java-кода пересоберите образ **app** (пример тега):
+3. После изменений Java-кода пересоберите образ **app** (пример тега **`ZIL_APP_IMAGE`** задаётся в **`registry-tags-lab8-hl7.env`**; подставляйте свой тег LAB13 при необходимости):
 
    ```bash
-   docker compose build app
+   docker compose --env-file registry-tags-lab8-hl7.env --env-file registry-tags-lab13-topic.env build app
    export ZIL_APP_IMAGE=rental/zil-app:lab13-local
    ```
+
+   Если без второго **`--env-file`** сборка не подхватывает переменные из **`docker-compose.yml`**, используйте оба файла так же, как при **`up`**.
 
 4. Перед **каждой** ячейкой матрицы задайте **одинаковые** CPU для **app** и **additional** и нужный **concurrency**:
 
@@ -349,10 +372,15 @@ curl -sS -X POST http://127.0.0.1:18080/publish \
   -d '{"entity":"USER","operation":"POST","payload":{"fullName":"curl-check","driverLicense":"CRL-001","phone":"+70000000001"}}'
 ```
 
-Ожидается **HTTP 200**. На **2307** проверка логов:
+Ожидается **HTTP 200**. На **2307** проверка логов (те же **`--env-file`**, что и при **`up`** — см. **`registry-tags-lab8-hl7.env`** для **`hl7`**):
 
 ```bash
-docker compose logs -f app
+cd ~/work/Labs_hls/zil
+docker compose \
+  --env-file registry-tags-lab8-hl7.env \
+  --env-file registry-tags-lab13-topic.env \
+  logs app --tail 80
+# или в реальном времени: docker compose … logs -f app
 ```
 
 Должна быть видимая обработка Kafka-команды (например **`Kafka command`**).
