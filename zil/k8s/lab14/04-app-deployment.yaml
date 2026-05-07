@@ -17,6 +17,7 @@ spec:
         - name: dockerhub-regcred
       containers:
         - name: app
+          # Совпадает с ZIL_APP_IMAGE в registry-tags-lab8-hl7.env
           image: docker.io/rinakt/zil-app:lab9
           imagePullPolicy: Always
           ports:

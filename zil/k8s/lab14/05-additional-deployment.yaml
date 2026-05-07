@@ -17,7 +17,7 @@ spec:
         - name: harbor-regcred
       containers:
         - name: additional
-          # Как в registry-tags-lab8-hl7.env (ZIL_ADDITIONAL_IMAGE); правьте проект/тег под свой push в Harbor.
+          # Совпадает с ZIL_ADDITIONAL_IMAGE в registry-tags-lab8-hl7.env
           image: hl13.zil:8888/katya/zil-additional-service:lab10
           imagePullPolicy: Always
           ports:
