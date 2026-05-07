@@ -423,7 +423,9 @@ kubectl -n hl07 create secret docker-registry harbor-regcred \
 
 Шаблон без секретов в репозитории: `k8s/lab14/03-secret-harbor-template.yaml`.
 
-Если из подов не резолвится **`hl13.zil`**, по аналогии с Kafka можно добавить **`hostAliases`** в Pod (или согласовать DNS с преподавателем).
+**Замечание по стенду:** `kubelet` на нодах качает образ **до** запуска Pod и использует **DNS самой ноды**, а не `hostAliases` Pod. Если при образе `hl13.zil:8888/...` получаете `lookup hl13.zil: no such host` или `HTTP response to HTTPS client`, в **`05-additional-deployment.yaml`** для pull используется **`10.60.3.11:8888/...`** (IP Harbor из таблицы), а в **`kubectl create secret`** указывайте `--docker-server=http://10.60.3.11:8888` (Harbor часто на HTTP). Логин/пароль — из таблицы курса для Harbor.
+
+Если из подов не резолвится **`hl13.zil`** для исходящих запросов приложения (не для pull), можно добавить **`hostAliases`** в Pod (или согласовать DNS с преподавателем).
 
 ---
 
