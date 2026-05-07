@@ -230,11 +230,18 @@ spec:
       labels:
         app: zil-app
     spec:
+      hostAliases:
+        - ip: "10.60.3.12"
+          hostnames:
+            - "hl14.zil"
+        - ip: "10.60.3.13"
+          hostnames:
+            - "hl15.zil"
       imagePullSecrets:
         - name: dockerhub-regcred
       containers:
         - name: app
-          image: <YOUR_DOCKERHUB_LOGIN>/zil-app:lab14
+          image: docker.io/rinakt/zil-app:lab9
           imagePullPolicy: Always
           ports:
             - containerPort: 8083
@@ -269,6 +276,11 @@ spec:
                 secretKeyRef:
                   name: zil-db-secret
                   key: DB_PASSWORD
+            - name: KAFKA_HOSTS
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: KAFKA_HOSTS
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
                 configMapKeyRef:
@@ -320,7 +332,7 @@ spec:
         - name: harbor-regcred
       containers:
         - name: additional
-          image: hl13.zil:8888/katya/zil-additional-service:lab10
+          image: 10.60.3.11:8888/katya/zil-additional-service:lab10
           imagePullPolicy: Always
           ports:
             - containerPort: 8084
@@ -450,6 +462,8 @@ kubectl -n hl07 get svc
 ---
 
 ## 8. Демонстрация Swagger UI (обязательно)
+
+Образ **additional** с тегом **`lab10`** из Harbor может **не отдавать** Swagger (**404** на `/swagger-ui/...`). Чтобы выполнить ТЗ для **обоих** Swagger UI, соберите и запушьте **`lab14-swagger`** по инструкции [LAB14_ADDITIONAL_SWAGGER_BUILD_RU.md](LAB14_ADDITIONAL_SWAGGER_BUILD_RU.md) и обновите **`05-additional-deployment.yaml`**.
 
 ## 8.1 Через port-forward
 

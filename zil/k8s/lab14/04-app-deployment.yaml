@@ -13,6 +13,13 @@ spec:
       labels:
         app: zil-app
     spec:
+      hostAliases:
+        - ip: "10.60.3.12"
+          hostnames:
+            - "hl14.zil"
+        - ip: "10.60.3.13"
+          hostnames:
+            - "hl15.zil"
       imagePullSecrets:
         - name: dockerhub-regcred
       containers:
@@ -53,6 +60,11 @@ spec:
                 secretKeyRef:
                   name: zil-db-secret
                   key: DB_PASSWORD
+            - name: KAFKA_HOSTS
+              valueFrom:
+                configMapKeyRef:
+                  name: zil-config
+                  key: KAFKA_HOSTS
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
                 configMapKeyRef:
