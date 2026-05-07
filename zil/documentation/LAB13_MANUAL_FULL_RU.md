@@ -805,6 +805,7 @@ k6 run --summary-export reports-lab13/summary_cpuXXX_concYYY.json load-lab13-kaf
 
 | Симптом | Причина | Что сделать |
 |---------|---------|--------------|
+| С **hl11** `curl`/`k6` GET на **`http://<IP_2307>:8084/...`** → **timeout**, **HTTP 000**; POST на локальный прокси при этом **200** | Между ВМ нагрузки и подсетью ВМ приложений нет маршрута/ACL на **8083/8084**, или указан **не тот** VPN-IP | На **2307**: `curl … http://127.0.0.1:8084/additional/stats` → ожидайте **200**. На **hl11**: в **`zil/k6/lab13-stand.env`** задайте **`LAB13_STAND_ACCESS=tunnel`**, **`BASE_URL=http://127.0.0.1:28084`**, **`APP_CHECK_URL=http://127.0.0.1:28083/stats`** и рабочий **`HL07_SSH`** — матрица сама поднимет **`ssh -L`**. См. **`lab13-stand.env.example`**. |
 | k6 `http_req_failed` / долгие POST к прокси | Прокси не слушает, неверный **`PROXY_URL`**, недоступен Kafka с **2311** | С **2311**: `curl -v "$PROXY_URL"`; логи прокси; `nc -vz hl15.zil 9094` к брокеру из bootstrap |
 | Одна партиция, `concurrency=2` | Топик эксперимента не с **2** партициями | **`hl07-lab13`:** создайте/проверьте топик (**`zil/scripts/kafka_lab13_create_topic_2_partitions.sh`** или Kafka UI), **`describe`** должен показать **`PartitionCount: 2`**. **`hl07`** с **ровно одной** партицией — можно только **`kafka-topics --alter --topic hl07 --partitions 2`**; если у **`hl07`** уже **>2** партиций, для LAB13 остаётся отдельное имя (**§0.5**). |
 | Duplicate processing ощущается после batch | семантика offset / ошибка в цикле | Разберите исключение в партии и ack mode listener |

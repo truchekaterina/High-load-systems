@@ -307,8 +307,9 @@ ensure_tunnel_alive() {
 curl_stand_codes() {
   ensure_tunnel_alive
   local app_code add_code
-  app_code="$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "${APP_CHECK_URL}" 2>/dev/null || echo 000)"
-  add_code="$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "${BASE_URL}/additional/stats" 2>/dev/null || echo 000)"
+  # Короткий connect-timeout: при блокировке TCP до BASE_URL на hl11 не ждём десятки секунд перед fallback на SSH-туннель.
+  app_code="$(curl -sS -o /dev/null -w "%{http_code}" --connect-timeout 4 --max-time 10 "${APP_CHECK_URL}" 2>/dev/null || echo 000)"
+  add_code="$(curl -sS -o /dev/null -w "%{http_code}" --connect-timeout 4 --max-time 10 "${BASE_URL}/additional/stats" 2>/dev/null || echo 000)"
   echo "${app_code} ${add_code}"
 }
 
