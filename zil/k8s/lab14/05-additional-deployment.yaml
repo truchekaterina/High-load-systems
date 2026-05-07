@@ -17,7 +17,7 @@ spec:
         - name: dockerhub-regcred
       containers:
         - name: additional
-          image: docker.io/rinakt/zil-additional:lab14
+          image: docker.io/rinakt/zil-additional:lab10
           imagePullPolicy: Always
           ports:
             - containerPort: 8084
