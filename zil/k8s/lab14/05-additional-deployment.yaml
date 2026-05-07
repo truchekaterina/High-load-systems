@@ -17,8 +17,8 @@ spec:
         - name: harbor-regcred
       containers:
         - name: additional
-          # Совпадает с ZIL_ADDITIONAL_IMAGE в registry-tags-lab8-hl7.env
-          image: hl13.zil:8888/katya/zil-additional-service:lab10
+          # В registry-tags указано hl13.zil:8888; kubelet на нодах тянет образ до старта Pod и часто не резолвит hl13.zil — для pull используем IP Harbor из таблицы (10.60.3.11).
+          image: 10.60.3.11:8888/katya/zil-additional-service:lab10
           imagePullPolicy: Always
           ports:
             - containerPort: 8084
