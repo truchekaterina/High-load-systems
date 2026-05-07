@@ -14,10 +14,11 @@ spec:
         app: zil-additional
     spec:
       imagePullSecrets:
-        - name: dockerhub-regcred
+        - name: harbor-regcred
       containers:
         - name: additional
-          image: docker.io/rinakt/zil-additional:lab10
+          # Как в registry-tags-lab8-hl7.env (ZIL_ADDITIONAL_IMAGE); правьте проект/тег под свой push в Harbor.
+          image: hl13.zil:8888/katya/zil-additional-service:lab10
           imagePullPolicy: Always
           ports:
             - containerPort: 8084

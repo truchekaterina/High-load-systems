@@ -22,7 +22,8 @@
 - `Namespace` с именем варианта: **`hl07`**
 - `ConfigMap` с ENV-параметрами
 - `Secret` для пароля БД
-- `Secret` для DockerHub доступа (реальный создаётся вручную, в git хранится шаблон)
+- `Secret` для DockerHub доступа к образу **`app`** (реальный создаётся вручную; в git — шаблон `03-secret-dockerhub-template.yaml`)
+- `Secret` для Harbor доступа к образу **`additional`** (реальный создаётся вручную; в git — шаблон `03-secret-harbor-template.yaml`)
 - `Deployment` для `app`
 - `Deployment` для `additional`
 - `Service` `ClusterIP` для внутреннего вызова `additional -> app`
@@ -198,6 +199,19 @@ data:
   .dockerconfigjson: "<BASE64_DOCKER_CONFIG_JSON>"
 ```
 
+## 5.4б `k8s/lab14/03-secret-harbor-template.yaml` (в git только шаблон)
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harbor-regcred
+  namespace: hl07
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: "<BASE64_DOCKER_CONFIG_JSON>"
+```
+
 ## 5.5 `k8s/lab14/04-app-deployment.yaml`
 
 ```yaml
@@ -303,10 +317,10 @@ spec:
         app: zil-additional
     spec:
       imagePullSecrets:
-        - name: dockerhub-regcred
+        - name: harbor-regcred
       containers:
         - name: additional
-          image: <YOUR_DOCKERHUB_LOGIN>/zil-additional-service:lab14
+          image: hl13.zil:8888/katya/zil-additional-service:lab10
           imagePullPolicy: Always
           ports:
             - containerPort: 8084
@@ -377,7 +391,9 @@ spec:
 
 ---
 
-## 6. DockerHub Secret (создаётся вручную)
+## 6. Секреты реестров (создаются вручную, в git только шаблоны)
+
+### 6.1 Docker Hub — только для образа **основного** `app`
 
 Реальный секрет создаётся командой, а не хранится в git:
 
@@ -390,6 +406,25 @@ kubectl -n hl07 create secret docker-registry dockerhub-regcred \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
+### 6.2 Harbor — для образа **additional**
+
+Harbor развёрнут на отдельной ВМ реестра (**SSH `2313`** на `hlssh.zil.digital`, внутренний IP **`10.60.3.11`**). На этой машине обычно делают **`docker login`** и **`docker push`** вашего `zil-additional-service` в проект Harbor.
+
+В Kubernetes нужен **отдельный** pull-secret (имя в манифесте — **`harbor-regcred`**). Подставьте URL реестра такой же, как в `docker login` (часто **`https://hl13.zil:8888`** по методичке курса; если у вас другой hostname — используйте его):
+
+```bash
+kubectl -n hl07 create secret docker-registry harbor-regcred \
+  --docker-server=https://hl13.zil:8888 \
+  --docker-username=admin \
+  --docker-password='<ПАРОЛЬ_HARBOR_ИЗ_ТАБЛИЦЫ>' \
+  --docker-email='<YOUR_EMAIL>' \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Шаблон без секретов в репозитории: `k8s/lab14/03-secret-harbor-template.yaml`.
+
+Если из подов не резолвится **`hl13.zil`**, по аналогии с Kafka можно добавить **`hostAliases`** в Pod (или согласовать DNS с преподавателем).
+
 ---
 
 ## 7. Применение манифестов
@@ -400,6 +435,7 @@ cd ~/work/Labs_hls/zil/k8s/lab14
 kubectl apply -f 00-namespace.yaml
 kubectl apply -f 01-configmap.yaml
 kubectl apply -f 02-secret-db.yaml
+# Перед деплоем additional создайте dockerhub-regcred и harbor-regcred (§6).
 kubectl apply -f 04-app-deployment.yaml
 kubectl apply -f 05-additional-deployment.yaml
 kubectl apply -f 06-services.yaml
@@ -465,7 +501,7 @@ kubectl -n hl07 run curl-tmp --rm -it --restart=Never --image=curlimages/curl --
 - узел `hl07` подключён в кластер и `Ready`
 - `kubectl` на вашем узле работает
 - namespace `hl07` создан
-- есть `ConfigMap`, `Secret` БД, `Secret` DockerHub
+- есть `ConfigMap`, `Secret` БД, `Secret` DockerHub (**для app**), `Secret` Harbor (**для additional**, имя `harbor-regcred`)
 - есть 2 `Deployment` и 3 `Service`
 - для обоих сервисов ресурсы `cpu=1`, `memory=1Gi` (Guaranteed)
 - в ENV есть `DB_HOST=10.60.3.9`
