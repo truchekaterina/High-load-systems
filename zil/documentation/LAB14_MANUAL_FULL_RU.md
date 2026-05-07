@@ -312,6 +312,8 @@ spec:
 
 ## 5.6 `k8s/lab14/05-additional-deployment.yaml`
 
+Дополнительный сервис должен работать на **отдельной** worker-ноде кластера, а не на ВМ **hl07**, где обычно стоят kubectl и k3s-agent. В манифесте задано `nodeAffinity`: узел с `kubernetes.io/hostname=hl07` исключён.
+
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -328,11 +330,20 @@ spec:
       labels:
         app: zil-additional
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - hl07
       imagePullSecrets:
         - name: harbor-regcred
       containers:
         - name: additional
-          image: 10.60.3.11:8888/katya/zil-additional-service:lab10
+          image: 10.60.3.11:8888/katya/zil-additional-service:lab14-swagger
           imagePullPolicy: Always
           ports:
             - containerPort: 8084

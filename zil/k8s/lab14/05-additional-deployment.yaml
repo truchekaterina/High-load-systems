@@ -13,12 +13,22 @@ spec:
       labels:
         app: zil-additional
     spec:
+      # Дополнительный сервис — на отдельной worker-ноде; на ВМ hl07 (kubectl/agent) не планируем.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - hl07
       imagePullSecrets:
         - name: harbor-regcred
       containers:
         - name: additional
           # В registry-tags указано hl13.zil:8888; kubelet на нодах тянет образ до старта Pod и часто не резолвит hl13.zil — для pull используем IP Harbor из таблицы (10.60.3.11).
-          image: 10.60.3.11:8888/katya/zil-additional-service:lab10
+          image: 10.60.3.11:8888/katya/zil-additional-service:lab14-swagger
           imagePullPolicy: Always
           ports:
             - containerPort: 8084
