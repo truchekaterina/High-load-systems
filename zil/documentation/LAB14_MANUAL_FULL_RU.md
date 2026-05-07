@@ -377,6 +377,33 @@ spec:
 
 ---
 
+## 5.8 Пересборка **additional** со Swagger UI (обязательно по ТЗ)
+
+Публичный образ `rinakt/zil-additional:lab10` **не содержит** SpringDoc; в репозитории **`zil-additional-service`** добавлены зависимость `springdoc-openapi-starter-webmvc-ui` и настройки в `application.properties` (те же пути, что у основного `zil`: `/swagger-ui.html`, `/v3/api-docs`).
+
+Соберите и опубликуйте образ с тегом **`lab14`**, который указан в `05-additional-deployment.yaml`:
+
+```bash
+cd ~/work/zil-additional-service   # или путь к вашему клону
+docker build -t rinakt/zil-additional:lab14 .
+docker push rinakt/zil-additional:lab14
+```
+
+На `hl07` после push:
+
+```bash
+kubectl apply -f ~/work/Labs_hls/zil/k8s/lab14/05-additional-deployment.yaml
+kubectl -n hl07 rollout status deployment/zil-additional
+```
+
+Проверка Swagger additional (NodePort или port-forward на **8084**):
+
+```bash
+curl -I http://127.0.0.1:32084/swagger-ui/index.html
+```
+
+---
+
 ## 6. DockerHub Secret (создаётся вручную)
 
 Реальный секрет создаётся командой, а не хранится в git:
