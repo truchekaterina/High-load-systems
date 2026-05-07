@@ -470,13 +470,130 @@ kubectl -n hl07 get pods -o wide
 kubectl -n hl07 get svc
 ```
 
+Для показа работы лабораторной преподавателю используйте **раздел 8** (пошаговый сценарий: `apply`, `port-forward`, NodePort, внутренний сервис).
+
 ---
 
-## 8. Демонстрация Swagger UI (обязательно)
+## 8. Сдача преподавателю: пошаговый сценарий демонстрации по ТЗ
+
+Ниже — **единый сценарий**, который закрывает формулировки ТЗ: узел в кластере, манифесты через `kubectl apply -f`, **Swagger обоих** сервисов через **`port-forward`**, **Swagger обоих** через **NodePort**, внутренний доступ **additional → app** (§10).
+
+### 8.1 Где запускать команды (важно для защиты)
+
+| Что делаете | Где |
+|-------------|-----|
+| **`kubectl`** (в том числе `apply`, `get`, **`port-forward`**) | Только на **ВМ hl07** после настройки `~/.kube/config` (раздел 6). Там API кластера доступен по VPN. |
+| Браузер со Swagger | На **hl07** (если есть графика / проброс дисплея) **или** на **домашнем ПК (Windows)** через **SSH-туннель** (ниже). |
+
+**Не запускайте `kubectl` на домашнем Windows без kubeconfig:** клиент пытается достучаться до **`http://localhost:8080`**, получает **connection refused** — это не ошибка лабы, а отсутствие контекста кластера.
+
+Зафиксированные в манифестах порты:
+
+- **NodePort основного (`zil-app`):** **32083**
+- **NodePort дополнительного (`zil-additional`):** **32084**
+
+Для **`port-forward`** ниже используются локальные порты **18083** и **18084** на стороне той машины, где висит `kubectl` (удобно не путать с NodePort).
+
+### 8.2 Блок 1 — показать развёртывание (ТЗ: успешный `kubectl apply -f`)
+
+На **hl07**, в каталоге с YAML:
+
+```bash
+ssh -p 2307 hl@hlssh.zil.digital
+cd ~/work/Labs_hls/zil/k8s/lab14
+kubectl apply -f 00-namespace.yaml -f 01-configmap.yaml -f 02-secret-db.yaml
+kubectl apply -f 04-app-deployment.yaml -f 05-additional-deployment.yaml -f 06-services.yaml
+kubectl -n hl07 get pods -o wide
+kubectl -n hl07 get svc
+```
+
+Преподавателю показываете: поды **`Running`**, сервисы есть (**ClusterIP** `zil-app-internal`, два **NodePort** с портами **32083** и **32084**). Дополнительный сервис по манифесту **не должен** оказаться на узле **`hl07`** — колонка **NODE** у Pod **`zil-additional`** должна быть **другая** worker-нода.
+
+### 8.3 Блок 2 — Swagger через `port-forward` (ТЗ)
+
+Нужны **два** процесса `port-forward` (два сервиса). Их держите **в отдельных терминальных вкладках** на **hl07** (или один — в foreground, второй — во второй SSH-сессии).
+
+**Терминал 1 (SSH → hl07):**
+
+```bash
+kubectl -n hl07 port-forward service/zil-app-nodeport 18083:8083
+```
+
+Оставить окно открытым; в логе будет `Forwarding from 127.0.0.1:18083 -> 8083`.
+
+**Терминал 2 (второй SSH → hl07):**
+
+```bash
+kubectl -n hl07 port-forward service/zil-additional-nodeport 18084:8084
+```
+
+Оставить открытым; будет `Forwarding from 127.0.0.1:18084 -> 8084`.
+
+**Если браузер на hl07:** открыть в браузере:
+
+- `http://127.0.0.1:18083/swagger-ui/index.html` — основной сервис  
+- `http://127.0.0.1:18084/swagger-ui/index.html` — дополнительный сервис  
+
+**Если браузер на Windows (вариант A):** пока работают оба `port-forward` на hl07, на **ПК** откройте **третье** окно PowerShell и поднимите туннель **без интерактивной оболочки** (`-N`):
+
+```powershell
+ssh -p 2307 -N -L 18083:127.0.0.1:18083 -L 18084:127.0.0.1:18084 hl@hlssh.zil.digital
+```
+
+Окно с этой командой **не закрывать**. В **Chrome на Windows** открыть те же URL:
+
+- `http://127.0.0.1:18083/swagger-ui/index.html`
+- `http://127.0.0.1:18084/swagger-ui/index.html`
+
+Так **127.0.0.1 на ПК** пробрасывается на **127.0.0.1 hl07**, где слушает `kubectl port-forward`.
+
+Если вместо страницы — **connection refused**, проверьте: оба `port-forward` на hl07 запущены, SSH с `-L` не упал, после перезапуска Pod команду `port-forward` **запустите заново** (старый процесс теряет Pod).
+
+### 8.4 Блок 3 — Swagger через NodePort (ТЗ)
+
+**На hl07** (достаточно для показа преподавателю по SSH):
+
+```bash
+curl -I http://127.0.0.1:32083/swagger-ui/index.html
+curl -I http://127.0.0.1:32084/swagger-ui/index.html
+```
+
+Ожидается строка ответа с **`HTTP/1.1 200`** (или `200 OK`).
+
+**Если нужно открыть NodePort в браузере на Windows:** отдельное окно PowerShell:
+
+```powershell
+ssh -p 2307 -N -L 32083:127.0.0.1:32083 -L 32084:127.0.0.1:32084 hl@hlssh.zil.digital
+```
+
+Затем в браузере:
+
+- `http://127.0.0.1:32083/swagger-ui/index.html`
+- `http://127.0.0.1:32084/swagger-ui/index.html`
+
+(При необходимости то же можно делать с VPN-доступной **внутренней IP любой ноды** кластера и теми же **32083** / **32084** — NodePort слушается на каждой ноде.)
+
+### 8.5 Блок 4 — внутренний ClusterIP (ТЗ: доступ статистики к основному сервису)
+
+Выполняется на **hl07**, см. раздел **10**.
+
+### 8.6 Что проговорить преподавателю по чек-листу ТЗ
+
+1. Узел **hl07** в кластере (**разделы 5–6** методички K3S-SETUP / этот документ §2–3).  
+2. Все нужные сущности в **`Namespace hl07`**: ConfigMap, Secret БД, Secret Docker Hub (**шаблон в git**), Secret Harbor для pull **additional**, два Deployment, три Service.  
+3. **`DB_HOST`** в конфиге совпадает с ТЗ (**10.60.3.9**), **Kafka** — IP **10.60.3.12,10.60.3.13** и при необходимости **hostAliases** в основном приложении (манифест **04**).  
+4. Ресурсы подов — **1 CPU / 1 Gi**, **Guaranteed**.  
+5. Показали Swagger **дважды**: через **`port-forward`** и через **NodePort**.  
+
+---
+
+## 9. Демонстрация Swagger UI (обязательно)
 
 Образ **additional** с тегом **`lab10`** из Harbor может **не отдавать** Swagger (**404** на `/swagger-ui/...`). Чтобы выполнить ТЗ для **обоих** Swagger UI, соберите и запушьте **`lab14-swagger`** по инструкции [LAB14_ADDITIONAL_SWAGGER_BUILD_RU.md](LAB14_ADDITIONAL_SWAGGER_BUILD_RU.md) и обновите **`05-additional-deployment.yaml`**.
 
-## 8.1 Через port-forward
+Краткий сценарий показа преподавателю — в **разделе 8**.
+
+## 9.1 Через port-forward
 
 ```bash
 kubectl -n hl07 port-forward service/zil-app-nodeport 18083:8083
@@ -488,7 +605,7 @@ kubectl -n hl07 port-forward service/zil-additional-nodeport 18084:8084
 - `http://127.0.0.1:18083/swagger-ui/index.html`
 - `http://127.0.0.1:18084/swagger-ui/index.html`
 
-## 8.2 Через NodePort
+## 9.2 Через NodePort
 
 На `hl07`:
 
@@ -510,7 +627,7 @@ ssh -p 2307 -L 32083:127.0.0.1:32083 -L 32084:127.0.0.1:32084 hl@hlssh.zil.digit
 
 ---
 
-## 9. Демонстрация внутреннего доступа additional -> app
+## 10. Демонстрация внутреннего доступа additional -> app
 
 Проверка сервисного имени `zil-app-internal` внутри namespace:
 
@@ -523,7 +640,9 @@ kubectl -n hl07 run curl-tmp --rm -it --restart=Never --image=curlimages/curl --
 
 ---
 
-## 10. Чек-лист защиты LAB14
+## 11. Чек-лист защиты LAB14
+
+Пошаговый сценарий сдачи преподавателю — **раздел 8**.
 
 - узел `hl07` подключён в кластер и `Ready`
 - `kubectl` на вашем узле работает
